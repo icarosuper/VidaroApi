@@ -4,7 +4,7 @@ namespace VidaroApi.Domain.Entities;
 
 public abstract class BaseAuditableEntity : BaseEntity
 {
-    public DateTimeOffset? UpdatedAt { get; private set; } = null;
+    public DateTimeOffset? UpdatedAt { get; private set; }
 
     protected BaseAuditableEntity(DateTimeOffset createdAt) : base(createdAt) { }
 

@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Public constructor** with required fields + `DateTimeOffset now` as last parameter (passed up via `: base(now)`). All business-value properties must be initialized in the constructor body — including defaults like `FollowerCount = 0` or `IsRevoked = false`. The `= null!` on string/navigation properties is a nullability annotation for the EF Core parameterless constructor and is not considered a real initialization.
 - **Parameterless constructor for EF Core** — always `private` (or `protected` for abstract base classes), decorated with `// ReSharper disable once UnusedMember.Local` and `[ExcludeFromCodeCoverage]`
 - **`init` for immutable properties** (e.g. `Username`, `CreatedAt`, `Id`); **`private set` for mutable ones** (e.g. `Email`, `PasswordHash`, counters). EF Core hydrates both via reflection — no `public set` needed.
+- **Nullable properties** (`string?`, `DateTimeOffset?`) never need `= null` — it's the implicit default. Only `= null!` on non-nullable strings/navigations (to suppress CS8618 from the EF Core parameterless constructor).
 - **Navigation collections** — backing field with `// ReSharper disable once CollectionNeverUpdated.Local` to suppress the IDE warning (EF Core populates via reflection):
   ```csharp
   // ReSharper disable once CollectionNeverUpdated.Local
