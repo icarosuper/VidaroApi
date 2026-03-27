@@ -29,6 +29,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Acronyms in property names** follow PascalCase with only the first letter capitalized: `UseSsl`, `HlsPath`, `ApiKey` — never `UseSSL`, `HLSPath`, `APIKey`.
 - **No default values in Settings POCOs** — defaults belong in `appsettings.json`, not in code. Code defaults silently mask missing configuration. The Settings POCO is just a typed shell; validation at startup (`ValidateOnStart()`) catches missing values early.
 
+## Branching and release strategy
+
+- **Feature branches** — one branch per feature group (e.g. `feature/auth`, `feature/channels`, `feature/videos`), branching off `master` and merged back via PR.
+- **`master`** — always deployable. CI/CD deploys `master` HEAD to staging automatically.
+- **Releases** — marked with a git tag (`v1.0.0`, `v1.1.0`, etc.) on `master`. Production deploys from tags.
+- **No staging branches** — no `staging/vX.Y.Z` branches. Rollback is done by redeploying a previous tag.
+- **Coordination with VidroProcessor** — when a change affects the shared contract (MinIO paths, Redis queue name, webhook format), both repos must be tagged and deployed together.
+
 ## Language
 
 All code must be in English: class names, method names, variables, test names, log messages, comments, and XML docs. The only exception is commit messages, which are written in Portuguese.
