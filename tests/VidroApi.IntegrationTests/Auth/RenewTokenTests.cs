@@ -20,7 +20,7 @@ public class RenewTokenTests(ApiFactory factory) : IClassFixture<ApiFactory>
     {
         var refreshToken = await SignInAndGetRefreshToken();
 
-        var response = await _client.PostAsJsonAsync("/v1/auth/refresh", new { refreshToken });
+        var response = await _client.PostAsJsonAsync("/v1/auth/renew-token", new { refreshToken });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -36,9 +36,9 @@ public class RenewTokenTests(ApiFactory factory) : IClassFixture<ApiFactory>
     {
         var refreshToken = await SignInAndGetRefreshToken();
 
-        await _client.PostAsJsonAsync("/v1/auth/refresh", new { refreshToken });
+        await _client.PostAsJsonAsync("/v1/auth/renew-token", new { refreshToken });
 
-        var response = await _client.PostAsJsonAsync("/v1/auth/refresh", new { refreshToken });
+        var response = await _client.PostAsJsonAsync("/v1/auth/renew-token", new { refreshToken });
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
@@ -51,11 +51,11 @@ public class RenewTokenTests(ApiFactory factory) : IClassFixture<ApiFactory>
     {
         var firstRefreshToken = await SignInAndGetRefreshToken();
 
-        var firstRefreshResponse = await _client.PostAsJsonAsync("/v1/auth/refresh", new { refreshToken = firstRefreshToken });
+        var firstRefreshResponse = await _client.PostAsJsonAsync("/v1/auth/renew-token", new { refreshToken = firstRefreshToken });
         var firstBody = await firstRefreshResponse.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
         var secondRefreshToken = firstBody.GetProperty("data").GetProperty("refreshToken").GetString()!;
 
-        var response = await _client.PostAsJsonAsync("/v1/auth/refresh", new { refreshToken = secondRefreshToken });
+        var response = await _client.PostAsJsonAsync("/v1/auth/renew-token", new { refreshToken = secondRefreshToken });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -63,7 +63,7 @@ public class RenewTokenTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Refresh_WithNonExistentToken_Returns401WithExpectedCode()
     {
-        var response = await _client.PostAsJsonAsync("/v1/auth/refresh", new { refreshToken ="token-that-does-not-exist" });
+        var response = await _client.PostAsJsonAsync("/v1/auth/renew-token", new { refreshToken ="token-that-does-not-exist" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
@@ -74,7 +74,7 @@ public class RenewTokenTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Refresh_WithEmptyToken_Returns400()
     {
-        var response = await _client.PostAsJsonAsync("/v1/auth/refresh", new { refreshToken = "" });
+        var response = await _client.PostAsJsonAsync("/v1/auth/renew-token", new { refreshToken = "" });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }

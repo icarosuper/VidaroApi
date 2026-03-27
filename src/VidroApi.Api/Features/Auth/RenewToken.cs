@@ -39,7 +39,7 @@ public static class RenewToken
     }
 
     public static void MapEndpoint(IEndpointRouteBuilder app) =>
-        app.MapPost("/v1/auth/refresh", async (
+        app.MapPost("/v1/auth/renew-token", async (
             Request req,
             IMediator mediator,
             CancellationToken ct) =>
