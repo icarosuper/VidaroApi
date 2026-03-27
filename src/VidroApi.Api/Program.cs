@@ -1,12 +1,15 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
 using VidroApi.Api.Middleware;
 using VidroApi.Application;
 using VidroApi.Infrastructure;
 using VidroApi.Infrastructure.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((ctx, cfg) => cfg.ReadFrom.Configuration(ctx.Configuration));
 
 // Application + Infrastructure
 builder.Services.AddApplication();
@@ -61,6 +64,11 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
     app.MapOpenApi();
+
+// CorrelationId must come first so the ID is in scope for all subsequent logs,
+// including Serilog's own request log entry.
+app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseSerilogRequestLogging();
 
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseAuthentication();
