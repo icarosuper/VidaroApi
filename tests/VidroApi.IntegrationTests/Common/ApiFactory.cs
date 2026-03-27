@@ -30,6 +30,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("MinIO:SecretKey", "test-secret-key");
         builder.UseSetting("MinIO:BucketName", "test-bucket");
         builder.UseSetting("MinIO:UploadUrlTtlHours", "1");
+        builder.UseSetting("ChannelSettings:MaxChannelsPerUser", "10");
         builder.UseSetting("Webhook:Secret", "test-webhook-secret");
     }
 
