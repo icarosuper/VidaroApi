@@ -9,5 +9,11 @@ public static partial class Errors
 
         public static Error LimitReached(int limit) =>
             new("channel.limit_reached", $"You cannot have more than {limit} channels.", ErrorType.Conflict);
+
+        public static Error AlreadyFollowing() =>
+            new("channel.already_following", "You are already following this channel.", ErrorType.Conflict);
+
+        public static Error NotFollowing() =>
+            new("channel.not_following", "You are not following this channel.", ErrorType.NotFound);
     }
 }
