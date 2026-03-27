@@ -16,7 +16,7 @@ public sealed class RequestLoggingPipelineBehavior<TRequest, TResponse>(
 
         try
         {
-            var response = await next();
+            var response = await next(ct);
 
             // Result<T, Error> and UnitResult<Error> from CSharpFunctionalExtensions don't share a
             // common interface, so we inspect IsFailure via reflection to keep this behavior generic.
