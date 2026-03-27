@@ -82,3 +82,5 @@ app.Lifetime.ApplicationStarted.Register(() =>
     Log.Information("Application listening on: {Urls}", string.Join(", ", app.Urls)));
 
 app.Run();
+
+public partial class Program;
