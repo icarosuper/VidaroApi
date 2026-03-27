@@ -4,6 +4,7 @@ namespace VidaroApi.Domain.Entities;
 
 public class RefreshToken : BaseEntity
 {
+    // ReSharper disable once UnusedMember.Local
     [ExcludeFromCodeCoverage]
     private RefreshToken() { }
 
@@ -13,12 +14,13 @@ public class RefreshToken : BaseEntity
         UserId = userId;
         Token = token;
         ExpiresAt = expiresAt;
+        IsRevoked = false;
     }
 
     public Guid UserId { get; init; }
     public string Token { get; init; } = null!;
     public DateTimeOffset ExpiresAt { get; init; }
-    public bool IsRevoked { get; private set; } = false;
+    public bool IsRevoked { get; private set; }
 
     public bool IsExpired(DateTimeOffset now) => now >= ExpiresAt;
     public bool IsValid(DateTimeOffset now) => !IsRevoked && !IsExpired(now);

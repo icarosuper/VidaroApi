@@ -4,6 +4,7 @@ namespace VidaroApi.Domain.Entities;
 
 public class User : BaseEntity
 {
+    // ReSharper disable once UnusedMember.Local
     [ExcludeFromCodeCoverage]
     private User() { }
 
@@ -22,10 +23,11 @@ public class User : BaseEntity
     public void ChangeEmail(string email) => Email = email;
     public void ChangePasswordHash(string passwordHash) => PasswordHash = passwordHash;
 
+    // ReSharper disable once CollectionNeverUpdated.Local
     private readonly List<RefreshToken> _refreshTokens = [];
     public IReadOnlyList<RefreshToken> RefreshTokens => _refreshTokens.AsReadOnly();
 
-    // Navigation properties added as entities are implemented:
-    // private List<Channel> _channels = [];
-    // public IReadOnlyList<Channel> Channels => _channels.AsReadOnly();
+    // ReSharper disable once CollectionNeverUpdated.Local
+    private readonly List<Channel> _channels = [];
+    public IReadOnlyList<Channel> Channels => _channels.AsReadOnly();
 }

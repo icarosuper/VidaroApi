@@ -4,16 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Domain entity conventions
 
-- **Public constructor** with required fields + `DateTimeOffset now` as last parameter (passed up via `: base(now)`)
-- **`[ExcludeFromCodeCoverage] private Entity() { }`** — parameterless constructor for EF Core
+- **Public constructor** with required fields + `DateTimeOffset now` as last parameter (passed up via `: base(now)`). All business-value properties must be initialized in the constructor body — including defaults like `FollowerCount = 0` or `IsRevoked = false`. The `= null!` on string/navigation properties is a nullability annotation for the EF Core parameterless constructor and is not considered a real initialization.
+- **Parameterless constructor for EF Core** — always `private` (or `protected` for abstract base classes), decorated with `// ReSharper disable once UnusedMember.Local` and `[ExcludeFromCodeCoverage]`
 - **`init` for immutable properties** (e.g. `Username`, `CreatedAt`, `Id`); **`private set` for mutable ones** (e.g. `Email`, `PasswordHash`, counters). EF Core hydrates both via reflection — no `public set` needed.
-- **`private List<T> _items = []; public IReadOnlyList<T> Items => _items.AsReadOnly();`** for navigation collections — external code can only read, mutations go through domain methods
+- **Navigation collections** — backing field with `// ReSharper disable once CollectionNeverUpdated.Local` to suppress the IDE warning (EF Core populates via reflection):
+  ```csharp
+  // ReSharper disable once CollectionNeverUpdated.Local
+  private readonly List<Video> _videos = [];
+  public IReadOnlyList<Video> Videos => _videos.AsReadOnly();
+  ```
 - **Domain methods for state mutations** — e.g. `video.MarkAsReady(...)`, `channel.IncrementFollowerCount()`, `user.ChangeEmail(...)`. Keeps logic encapsulated instead of spreading it across slices.
 - **No value objects** unless a type has real validation/equality rules (none identified yet)
 - **Base classes:** `BaseEntity` (Id + CreatedAt, both `init`) and `BaseAuditableEntity : BaseEntity` (+ `UpdatedAt` with `private set`, mutated via `SetUpdatedAt(now)`)
-- **Errors live in `Domain/Errors/`**. Two kinds:
+- **Errors live in `Domain/Errors/`**. Three kinds:
   - `CommonErrors` — generic, parameterized: `CommonErrors.NotFound("User", id)`, `CommonErrors.Unauthorized()`, `CommonErrors.Forbidden()`
-  - Per-entity files — specific errors for that entity only: `UserErrors.InvalidCredentials()`, `ChannelErrors.NotOwner()`, etc.
+  - `EntityErrors/Errors.X.cs` — one file per entity, `static partial class Errors` with a nested static class per entity. Called as `Errors.User.IncorrectPassword()`, `Errors.Channel.NotOwner()`
+  - `FeatureErrors/Errors.X.cs` — same pattern for cross-entity feature errors (e.g. upload flow)
   - Each `Error` carries a `Code`, `Message`, and `ErrorType` (enum). The Api layer maps `ErrorType` to HTTP status codes in `ResultExtensions`.
 
 ## Language
