@@ -23,6 +23,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - `FeatureErrors/Errors.X.cs` — same pattern for cross-entity feature errors (e.g. upload flow)
   - Each `Error` carries a `Code`, `Message`, and `ErrorType` (enum). The Api layer maps `ErrorType` to HTTP status codes in `ResultExtensions`.
 
+## Settings / POCO conventions
+
+- **Non-nullable `string` properties** use `= null!` (not `= default!`) to suppress CS8618 while making the intent clear.
+- **Acronyms in property names** follow PascalCase with only the first letter capitalized: `UseSsl`, `HlsPath`, `ApiKey` — never `UseSSL`, `HLSPath`, `APIKey`.
+- **No default values in Settings POCOs** — defaults belong in `appsettings.json`, not in code. Code defaults silently mask missing configuration. The Settings POCO is just a typed shell; validation at startup (`ValidateOnStart()`) catches missing values early.
+
 ## Language
 
 All code must be in English: class names, method names, variables, test names, log messages, comments, and XML docs. The only exception is commit messages, which are written in Portuguese.

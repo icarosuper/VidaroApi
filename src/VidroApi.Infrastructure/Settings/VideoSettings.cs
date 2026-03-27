@@ -1,0 +1,6 @@
+namespace VidroApi.Infrastructure.Settings;
+
+public class VideoSettings
+{
+    public int MaxTagsPerVideo { get; set; } = 10;
+}
