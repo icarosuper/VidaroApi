@@ -48,9 +48,10 @@ public static class DeleteChannel
             if (userIsNotOwner)
                 return Errors.Channel.NotOwner();
 
-            await db.ChannelFollowers
+            var followers = await db.ChannelFollowers
                 .Where(cf => cf.ChannelId == cmd.ChannelId)
-                .ExecuteDeleteAsync(ct);
+                .ToListAsync(ct);
+            db.ChannelFollowers.RemoveRange(followers);
 
             db.Channels.Remove(channel);
             await db.SaveChangesAsync(ct);

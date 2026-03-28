@@ -56,10 +56,7 @@ public static class FollowChannel
 
             var follower = new ChannelFollower(channel.Id, cmd.UserId, clock.UtcNow);
             db.ChannelFollowers.Add(follower);
-
-            await db.Channels
-                .Where(c => c.Id == cmd.ChannelId)
-                .ExecuteUpdateAsync(s => s.SetProperty(c => c.FollowerCount, c => c.FollowerCount + 1), ct);
+            channel.IncrementFollowerCount();
 
             await db.SaveChangesAsync(ct);
 

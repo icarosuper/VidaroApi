@@ -39,8 +39,8 @@ public static class UnfollowChannel
     {
         public async ValueTask<UnitResult<Error>> Handle(Command cmd, CancellationToken ct)
         {
-            var channelExists = await db.Channels.AnyAsync(c => c.Id == cmd.ChannelId, ct);
-            if (!channelExists)
+            var channel = await db.Channels.FirstOrDefaultAsync(c => c.Id == cmd.ChannelId, ct);
+            if (channel is null)
                 return CommonErrors.NotFound(nameof(Channel), cmd.ChannelId);
 
             var follower = await db.ChannelFollowers
@@ -51,10 +51,7 @@ public static class UnfollowChannel
                 return Errors.Channel.NotFollowing();
 
             db.ChannelFollowers.Remove(follower!);
-
-            await db.Channels
-                .Where(c => c.Id == cmd.ChannelId)
-                .ExecuteUpdateAsync(s => s.SetProperty(c => c.FollowerCount, c => c.FollowerCount - 1), ct);
+            channel.DecrementFollowerCount();
 
             await db.SaveChangesAsync(ct);
 
