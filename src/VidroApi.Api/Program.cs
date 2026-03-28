@@ -28,6 +28,11 @@ builder.Services.AddOptions<MinioSettings>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services.AddOptions<ChannelSettings>()
+    .BindConfiguration("ChannelSettings")
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
 builder.Services.AddOptions<VideoSettings>()
     .BindConfiguration("VideoSettings")
     .ValidateDataAnnotations()

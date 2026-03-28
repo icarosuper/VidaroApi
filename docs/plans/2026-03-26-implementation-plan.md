@@ -1681,65 +1681,9 @@ public static class FollowChannel
 
 **Step 2: Implementar UnfollowChannel** — inverso de Follow, decrementa contador.
 
-**Step 3: Implementar ListChannelVideos com cursor-based pagination**
+> **Nota:** `ListChannelVideos` foi movido para o contexto de vídeos (Task 12+), onde filtros avançados de ordenação e busca serão discutidos junto com as demais listagens.
 
-```csharp
-// src/VideoApi.Application/Channels/ListChannelVideos.cs
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using VideoApi.Application.Common;
-using VideoApi.Infrastructure.Persistence;
-
-namespace VideoApi.Application.Channels;
-
-public static class ListChannelVideos
-{
-    public record Request(Guid ChannelId, DateTimeOffset? Cursor, int Limit = 20) : IRequest<PagedResult<VideoSummary>>;
-
-    public record VideoSummary(Guid Id, string Title, string? ThumbnailUrl,
-        long ViewCount, long LikeCount, double? DurationSeconds, DateTimeOffset CreatedAt);
-
-    public class Handler(AppDbContext db) : IRequestHandler<Request, PagedResult<VideoSummary>>
-    {
-        public async Task<PagedResult<VideoSummary>> Handle(Request req, CancellationToken ct)
-        {
-            var limit = Math.Clamp(req.Limit, 1, 50);
-
-            var query = db.Videos
-                .AsNoTracking()
-                .Where(v => v.ChannelId == req.ChannelId && v.Status == Domain.Enums.VideoStatus.Ready);
-
-            if (req.Cursor.HasValue)
-                query = query.Where(v => v.CreatedAt < req.Cursor.Value);
-
-            var videos = await query
-                .OrderByDescending(v => v.CreatedAt)
-                .Take(limit + 1)
-                .Select(v => new VideoSummary(v.Id, v.Title,
-                    v.Artifacts != null ? v.Artifacts.ThumbnailsPath : null,
-                    v.ViewCount, v.LikeCount, v.DurationSeconds, v.CreatedAt))
-                .ToListAsync(ct);
-
-            string? nextCursor = null;
-            if (videos.Count > limit)
-            {
-                videos.RemoveAt(videos.Count - 1);
-                nextCursor = videos.Last().CreatedAt.ToString("O");
-            }
-
-            return new PagedResult<VideoSummary>(videos, nextCursor);
-        }
-    }
-
-    public static void MapEndpoint(IEndpointRouteBuilder app) =>
-        app.MapGet("/channels/{id:guid}/videos", async (
-            Guid id, DateTimeOffset? cursor, int limit,
-            IMediator mediator, CancellationToken ct) =>
-            Results.Ok(await mediator.Send(new Request(id, cursor, limit), ct)));
-}
-```
-
-**Step 4: Registrar no Program.cs e compilar**
+**Step 3: Registrar no Program.cs e compilar**
 
 ```bash
 dotnet build
@@ -1755,7 +1699,7 @@ git commit -m "feat: add Channels follow/unfollow and list videos slices"
 
 ---
 
-## Task 12: Videos — CreateVideo e ConfirmUpload
+## Task 12: Videos — CreateVideo, ConfirmUpload e ListChannelVideos
 
 **Files:**
 - Create: `src/VideoApi.Application/Videos/CreateVideo.cs`
@@ -2370,6 +2314,66 @@ git commit -m "test: add integration tests with Testcontainers"
 
 ---
 
+## Task 19: Playlists
+
+**Modelo:** Uma única entidade `Playlist` com `Scope` enum (`User`/`Channel`). Playlists de usuário aceitam vídeos de qualquer canal; playlists de canal só aceitam vídeos do próprio canal.
+
+**Entities:**
+- `Playlist` — campos: `UserId` (dono sempre é um usuário), `ChannelId?` (preenchido quando `Scope = Channel`), `Scope` (User/Channel), `Name`, `Description?`, `Visibility` (Public/Private), `VideoCount` (denormalizado).
+- `PlaylistItem` — join table entre `Playlist` e `Video`. Campos: `PlaylistId`, `VideoId`, `Order` (int, posição na playlist).
+
+**Files:**
+- Create: `src/VidroApi.Domain/Entities/Playlist.cs`
+- Create: `src/VidroApi.Domain/Entities/PlaylistItem.cs`
+- Create: `src/VidroApi.Domain/Enums/PlaylistScope.cs`
+- Create: `src/VidroApi.Domain/Enums/PlaylistVisibility.cs`
+- Create: `src/VidroApi.Infrastructure/Persistence/Configurations/PlaylistConfiguration.cs`
+- Create: `src/VidroApi.Infrastructure/Persistence/Configurations/PlaylistItemConfiguration.cs`
+- Create: `src/VidroApi.Api/Features/Playlists/CreatePlaylist.cs`
+- Create: `src/VidroApi.Api/Features/Playlists/GetPlaylist.cs`
+- Create: `src/VidroApi.Api/Features/Playlists/UpdatePlaylist.cs`
+- Create: `src/VidroApi.Api/Features/Playlists/DeletePlaylist.cs`
+- Create: `src/VidroApi.Api/Features/Playlists/AddVideoToPlaylist.cs`
+- Create: `src/VidroApi.Api/Features/Playlists/RemoveVideoFromPlaylist.cs`
+- Create: `src/VidroApi.Api/Features/Playlists/ReorderPlaylistItems.cs`
+- Create: `tests/VidroApi.IntegrationTests/Playlists/CreatePlaylistTests.cs`
+- Create: `tests/VidroApi.IntegrationTests/Playlists/GetPlaylistTests.cs`
+- Create: `tests/VidroApi.IntegrationTests/Playlists/UpdatePlaylistTests.cs`
+- Create: `tests/VidroApi.IntegrationTests/Playlists/DeletePlaylistTests.cs`
+- Create: `tests/VidroApi.IntegrationTests/Playlists/AddVideoToPlaylistTests.cs`
+- Create: `tests/VidroApi.IntegrationTests/Playlists/RemoveVideoFromPlaylistTests.cs`
+- Create: `tests/VidroApi.IntegrationTests/Playlists/ReorderPlaylistItemsTests.cs`
+
+**Endpoints:**
+
+| Method | Route | Auth | Descrição |
+|--------|-------|------|-----------|
+| POST | `/v1/playlists` | ✅ | Criar playlist (user ou channel scope) |
+| GET | `/v1/playlists/{playlistId}` | opcional | Buscar playlist com itens; private → 404 para não-dono |
+| PUT | `/v1/playlists/{playlistId}` | ✅ dono | Atualizar nome/descrição/visibilidade |
+| DELETE | `/v1/playlists/{playlistId}` | ✅ dono | Remover playlist e seus itens |
+| POST | `/v1/playlists/{playlistId}/items` | ✅ dono | Adicionar vídeo à playlist |
+| DELETE | `/v1/playlists/{playlistId}/items/{videoId}` | ✅ dono | Remover vídeo da playlist |
+| PUT | `/v1/playlists/{playlistId}/items/order` | ✅ dono | Reordenar itens (recebe lista ordenada de videoIds) |
+
+**Regras de negócio:**
+- `Scope = Channel` exige `ChannelId` no request; valida que o usuário é dono do canal.
+- `AddVideoToPlaylist` com `Scope = Channel` valida que o vídeo pertence ao canal da playlist → 422 se não pertencer.
+- `VideoCount` é denormalizado em `Playlist` e atualizado via `ExecuteUpdateAsync` ao adicionar/remover itens.
+- `Order` é gerenciado pelo endpoint de reordenação — recebe um array de `videoId` na ordem desejada e reatribui `Order = índice`.
+- `GetPlaylist` retorna os itens ordenados por `Order`, com campos básicos do vídeo (id, title, thumbnailUrl, duration).
+- Playlist privada retorna 404 para não-donos.
+- Um vídeo não pode ser adicionado duas vezes à mesma playlist → 409.
+- Erros específicos em `Errors.Playlist.cs`: `NotOwner`, `VideoAlreadyInPlaylist`, `VideoNotInPlaylist`, `VideoNotFromChannel`.
+
+**Migration:**
+
+```bash
+dotnet ef migrations add AddPlaylists --project src/VidroApi.Infrastructure --startup-project src/VidroApi.Api --output-dir Persistence/Migrations
+```
+
+---
+
 ## Resumo dos Endpoints
 
 Após todas as tasks, esses são os endpoints registrados no `Program.cs`:
@@ -2387,11 +2391,11 @@ UpdateChannel.MapEndpoint(app);
 DeleteChannel.MapEndpoint(app);
 FollowChannel.MapEndpoint(app);
 UnfollowChannel.MapEndpoint(app);
-ListChannelVideos.MapEndpoint(app);
 
 // Videos
 CreateVideo.MapEndpoint(app);
 ConfirmUpload.MapEndpoint(app);
+ListChannelVideos.MapEndpoint(app);
 GetVideo.MapEndpoint(app);
 DeleteVideo.MapEndpoint(app);
 ListFeedVideos.MapEndpoint(app);
@@ -2406,6 +2410,15 @@ RemoveReaction.MapEndpoint(app);
 AddComment.MapEndpoint(app);
 ListComments.MapEndpoint(app);
 DeleteComment.MapEndpoint(app);
+
+// Playlists
+CreatePlaylist.MapEndpoint(app);
+GetPlaylist.MapEndpoint(app);
+UpdatePlaylist.MapEndpoint(app);
+DeletePlaylist.MapEndpoint(app);
+AddVideoToPlaylist.MapEndpoint(app);
+RemoveVideoFromPlaylist.MapEndpoint(app);
+ReorderPlaylistItems.MapEndpoint(app);
 ```
 
 ---
@@ -2417,4 +2430,5 @@ DeleteComment.MapEndpoint(app);
 3. Task 10–11 (Channels) — necessário para criar vídeos
 4. Tasks 12–15 (Videos) — core da plataforma
 5. Tasks 16–17 (Reactions + Comments) — features sociais
+6. Task 19 (Playlists) — depende de vídeos estar pronto
 6. Task 18 (Integration Tests) — validação end-to-end
