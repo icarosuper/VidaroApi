@@ -78,12 +78,7 @@ public static class ListFeedVideos
                 .Take(cmd.Limit)
                 .ToListAsync(ct);
 
-            var thumbnailUrlTasks = videos.Select(async v =>
-                v.Artifacts?.ThumbnailPaths.Count > 0
-                    ? (string?)await minio.GenerateDownloadUrlAsync(v.Artifacts.ThumbnailPaths[0], ThumbnailUrlTtl, ct)
-                    : null);
-
-            var thumbnailUrls = await Task.WhenAll(thumbnailUrlTasks);
+            var thumbnailUrls = await Task.WhenAll(videos.Select(GenerateThumbnailUrlAsync));
 
             var summaries = videos.Select((v, i) => new VideoSummary
             {
@@ -101,7 +96,21 @@ public static class ListFeedVideos
 
             var nextCursor = videos.Count == cmd.Limit ? videos[^1].CreatedAt : (DateTimeOffset?)null;
 
-            return new Response { Videos = summaries, NextCursor = nextCursor };
+            return new Response
+            {
+                Videos = summaries,
+                NextCursor = nextCursor
+            };
+        }
+
+        private Task<string?> GenerateThumbnailUrlAsync(Domain.Entities.Video video)
+        {
+            var firstThumbnail = video.Artifacts?.ThumbnailPaths.FirstOrDefault();
+            if (firstThumbnail is null)
+                return Task.FromResult<string?>(null);
+
+            return minio.GenerateDownloadUrlAsync(firstThumbnail, ThumbnailUrlTtl)
+                .ContinueWith(t => (string?)t.Result, TaskContinuationOptions.ExecuteSynchronously);
         }
     }
 }
