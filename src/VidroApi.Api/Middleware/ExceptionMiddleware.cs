@@ -21,6 +21,12 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
 
             await ctx.Response.WriteAsync(JsonSerializer.Serialize(new { errors }));
         }
+        catch (BadHttpRequestException ex)
+        {
+            ctx.Response.StatusCode = ex.StatusCode;
+            ctx.Response.ContentType = "application/json";
+            await ctx.Response.WriteAsync(JsonSerializer.Serialize(new { code = "bad_request", message = ex.Message }));
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Unhandled exception");
