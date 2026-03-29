@@ -33,6 +33,7 @@ public class Video : BaseAuditableEntity
         ViewCount = 0;
         LikeCount = 0;
         DislikeCount = 0;
+        CommentCount = 0;
     }
 
     public Guid ChannelId { get; init; }
@@ -45,6 +46,7 @@ public class Video : BaseAuditableEntity
     public int ViewCount { get; private set; }
     public int LikeCount { get; private set; }
     public int DislikeCount { get; private set; }
+    public int CommentCount { get; private set; }
 
     public void UpdateDetails(string title, string? description, List<string> tags,
         VideoVisibility visibility, DateTimeOffset now)
