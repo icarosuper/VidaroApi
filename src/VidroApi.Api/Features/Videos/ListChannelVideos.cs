@@ -1,11 +1,14 @@
 using System.Security.Claims;
 using CSharpFunctionalExtensions;
+using FluentValidation;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using VidroApi.Api.Extensions;
 using VidroApi.Domain.Enums;
 using VidroApi.Domain.Errors;
 using VidroApi.Infrastructure.Persistence;
+using VidroApi.Infrastructure.Settings;
 
 namespace VidroApi.Api.Features.Videos;
 
@@ -17,6 +20,16 @@ public static class ListChannelVideos
         public Guid? RequestingUserId { get; init; }
         public DateTimeOffset? Cursor { get; init; }
         public int Limit { get; init; }
+    }
+
+    public class Validator : AbstractValidator<Command>
+    {
+        public Validator(IOptions<ListChannelVideosSettings> options)
+        {
+            RuleFor(x => x.Limit)
+                .InclusiveBetween(1, options.Value.MaxLimit)
+                .WithMessage(x => $"Limit must be between 1 and {options.Value.MaxLimit}.");
+        }
     }
 
     public record Response
@@ -44,7 +57,7 @@ public static class ListChannelVideos
             ClaimsPrincipal user,
             IMediator mediator,
             DateTimeOffset? cursor,
-            int limit = 20,
+            int limit,
             CancellationToken ct = default) =>
         {
             Guid? requestingUserId = user.Identity?.IsAuthenticated == true ? user.GetUserId() : null;
@@ -53,7 +66,7 @@ public static class ListChannelVideos
                 ChannelId = channelId,
                 RequestingUserId = requestingUserId,
                 Cursor = cursor,
-                Limit = Math.Clamp(limit, 1, 50)
+                Limit = limit
             };
             var result = await mediator.Send(cmd, ct);
             return result.ToApiResult(StatusCodes.Status200OK);
