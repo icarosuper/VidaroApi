@@ -62,9 +62,9 @@ public static class ReactToVideo
             if (isOwner)
                 return Errors.Video.CannotReactToOwnVideo();
 
-            var existingReaction = await FetchReaction(cmd.VideoId, cmd.UserId, ct);
-
             await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+            var existingReaction = await FetchReaction(cmd.VideoId, cmd.UserId, ct);
 
             if (existingReaction is null)
             {

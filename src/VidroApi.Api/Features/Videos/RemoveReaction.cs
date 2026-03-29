@@ -37,15 +37,18 @@ public static class RemoveReaction
     {
         public async ValueTask<UnitResult<Error>> Handle(Command cmd, CancellationToken ct)
         {
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+
             var reaction = await FetchReaction(cmd.VideoId, cmd.UserId, ct);
             if (reaction is null)
                 return Errors.Reaction.NotFound();
 
-            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            var deletedCount = await db.Reactions
+                .Where(r => r.Id == reaction.Id)
+                .ExecuteDeleteAsync(ct);
 
-            db.Reactions.Remove(reaction);
-            await db.SaveChangesAsync(ct);
-            await DecrementCounter(cmd.VideoId, reaction.Type, ct);
+            if (deletedCount > 0)
+                await DecrementCounter(cmd.VideoId, reaction.Type, ct);
 
             await tx.CommitAsync(ct);
 

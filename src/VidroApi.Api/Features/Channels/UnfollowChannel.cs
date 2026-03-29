@@ -39,21 +39,20 @@ public static class UnfollowChannel
     {
         public async ValueTask<UnitResult<Error>> Handle(Command cmd, CancellationToken ct)
         {
-            var channel = await db.Channels.FirstOrDefaultAsync(c => c.Id == cmd.ChannelId, ct);
-            if (channel is null)
+            var channelExists = await db.Channels.AnyAsync(c => c.Id == cmd.ChannelId, ct);
+            if (!channelExists)
                 return CommonErrors.NotFound(nameof(Channel), cmd.ChannelId);
-
-            var follower = await db.ChannelFollowers
-                .FirstOrDefaultAsync(cf => cf.ChannelId == cmd.ChannelId && cf.UserId == cmd.UserId, ct);
-
-            var notFollowing = follower is null;
-            if (notFollowing)
-                return Errors.Channel.NotFollowing();
 
             await using var tx = await db.Database.BeginTransactionAsync(ct);
 
-            db.ChannelFollowers.Remove(follower!);
-            await db.SaveChangesAsync(ct);
+            var deletedCount = await db.ChannelFollowers
+                .Where(cf => cf.ChannelId == cmd.ChannelId && cf.UserId == cmd.UserId)
+                .ExecuteDeleteAsync(ct);
+
+            var notFollowing = deletedCount == 0;
+            if (notFollowing)
+                return Errors.Channel.NotFollowing();
+
             await DecrementFollowerCount(cmd.ChannelId, ct);
 
             await tx.CommitAsync(ct);
