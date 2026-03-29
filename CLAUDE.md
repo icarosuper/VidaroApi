@@ -14,7 +14,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   private readonly List<Video> _videos = [];
   public IReadOnlyList<Video> Videos => _videos.AsReadOnly();
   ```
-- **Domain methods for state mutations** — e.g. `video.MarkAsReady(...)`, `channel.IncrementFollowerCount()`, `user.ChangeEmail(...)`. Keeps logic encapsulated instead of spreading it across slices.
+- **Domain methods for state mutations** — e.g. `video.MarkAsReady(...)`, `user.ChangeEmail(...)`. Keeps logic encapsulated instead of spreading it across slices.
+- **No counter methods on entities** — counters (`LikeCount`, `DislikeCount`, `ViewCount`, `FollowerCount`) are updated atomically via `ExecuteUpdateAsync` in the feature handler. Entity methods like `IncrementLikeCount()` are not safe under concurrency and must not be added.
+- **`ExecuteUpdateAsync` always goes in a private method** — never inline in `Handle`. Name the method after its intent (e.g. `IncrementFollowerCount`, `DecrementFollowerCount`). Return `Task<int>` (not `Task`) to match the return type of `ExecuteUpdateAsync` exactly and avoid implicit upcasting overhead.
+- **Use a transaction whenever `SaveChangesAsync` and `ExecuteUpdateAsync` must be atomic** — wrap both in `await using var tx = await db.Database.BeginTransactionAsync(ct)` and call `await tx.CommitAsync(ct)` at the end. The `await using` ensures automatic rollback on failure.
 - **No value objects** unless a type has real validation/equality rules (none identified yet)
 - **Base classes:** `BaseEntity` (Id + CreatedAt, both `init`) and `BaseAuditableEntity : BaseEntity` (+ `UpdatedAt` with `private set`, mutated via `SetUpdatedAt(now)`)
 - **Errors live in `Domain/Errors/`**. Three kinds:

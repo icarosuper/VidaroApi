@@ -10,7 +10,7 @@
 
 ---
 
-## Task 1: Scaffold da Solution
+## Task 1: ✅ Scaffold da Solution
 
 **Files:**
 - Create: `src/VideoApi.Api/VideoApi.Api.csproj`
@@ -121,7 +121,7 @@ git commit -m "chore: scaffold solution with 4 projects and test projects"
 
 ---
 
-## Task 2: Domain — Entidades e Enums
+## Task 2: ✅ Domain — Entidades e Enums
 
 **Files:**
 - Create: `src/VideoApi.Domain/Entities/User.cs`
@@ -368,7 +368,7 @@ git commit -m "feat: add domain entities and enums"
 
 ---
 
-## Task 3: Infrastructure — Settings e Interfaces
+## Task 3: ✅ Infrastructure — Settings e Interfaces
 
 **Files:**
 - Create: `src/VideoApi.Application/Interfaces/IMinioService.cs`
@@ -485,7 +485,7 @@ git commit -m "feat: add application interfaces and infrastructure settings"
 
 ---
 
-## Task 4: Infrastructure — EF Core DbContext
+## Task 4: ✅ Infrastructure — EF Core DbContext
 
 **Files:**
 - Create: `src/VideoApi.Infrastructure/Persistence/AppDbContext.cs`
@@ -675,7 +675,7 @@ git commit -m "feat: add EF Core DbContext and entity configurations"
 
 ---
 
-## Task 5: Infrastructure — Implementações de Serviços
+## Task 5: ✅ Infrastructure — Implementações de Serviços
 
 **Files:**
 - Create: `src/VideoApi.Infrastructure/Services/MinioService.cs`
@@ -847,7 +847,7 @@ git commit -m "feat: add MinIO and Redis service implementations"
 
 ---
 
-## Task 6: Api — Program.cs e configuração base
+## Task 6: ✅ Api — Program.cs e configuração base
 
 **Files:**
 - Modify: `src/VideoApi.Api/Program.cs`
@@ -1075,7 +1075,7 @@ git commit -m "feat: configure Program.cs, DI, JWT auth and exception middleware
 
 ---
 
-## Task 7: Migrations e docker-compose
+## Task 7: ✅ Migrations e docker-compose
 
 **Files:**
 - Create: `docker-compose.yml`
@@ -1154,7 +1154,7 @@ git commit -m "feat: add docker-compose and initial EF Core migration"
 
 ---
 
-## Task 8: Auth — Register
+## Task 8: ✅ Auth — Register
 
 **Files:**
 - Create: `src/VideoApi.Application/Auth/Register.cs`
@@ -1266,7 +1266,7 @@ git commit -m "feat: add Auth/Register slice"
 
 ---
 
-## Task 9: Auth — Login e RefreshToken
+## Task 9: ✅ Auth — Login e RefreshToken
 
 **Files:**
 - Create: `src/VideoApi.Application/Auth/Login.cs`
@@ -1469,7 +1469,7 @@ git commit -m "feat: add Auth/Login and Auth/RefreshToken slices"
 
 ---
 
-## Task 10: Channels — CRUD
+## Task 10: ✅ Channels — CRUD
 
 **Files:**
 - Create: `src/VideoApi.Application/Channels/CreateChannel.cs`
@@ -1622,7 +1622,7 @@ git commit -m "feat: add Channels CRUD slices"
 
 ---
 
-## Task 11: Channels — Follow/Unfollow e ListChannelVideos
+## Task 11: ✅ Channels — Follow/Unfollow e ListChannelVideos
 
 **Files:**
 - Create: `src/VideoApi.Application/Channels/FollowChannel.cs`
@@ -1699,7 +1699,7 @@ git commit -m "feat: add Channels follow/unfollow and list videos slices"
 
 ---
 
-## Task 12: Videos — CreateVideo, ConfirmUpload e ListChannelVideos
+## Task 12: ✅ Videos — CreateVideo, ConfirmUpload e ListChannelVideos
 
 **Files:**
 - Create: `src/VideoApi.Application/Videos/CreateVideo.cs`
@@ -1861,7 +1861,7 @@ git commit -m "feat: add Videos/CreateVideo and Videos/ConfirmUpload slices"
 
 ---
 
-## Task 13: Videos — GetVideo, DeleteVideo
+## Task 13: ✅ Videos — GetVideo, DeleteVideo
 
 **Files:**
 - Create: `src/VideoApi.Application/Videos/GetVideo.cs`
@@ -1973,7 +1973,7 @@ git commit -m "feat: add Videos/GetVideo and Videos/DeleteVideo slices"
 
 ---
 
-## Task 14: Videos — ListFeedVideos e ListTrendingVideos
+## Task 14: ✅ Videos — ListFeedVideos e ListTrendingVideos
 
 **Files:**
 - Create: `src/VideoApi.Application/Videos/ListFeedVideos.cs`
@@ -2012,7 +2012,7 @@ git commit -m "feat: add Videos/ListFeedVideos and Videos/ListTrendingVideos sli
 
 ---
 
-## Task 15: Videos — VideoProcessedWebhook
+## Task 15: ✅ Videos — VideoProcessedWebhook
 
 **Files:**
 - Create: `src/VideoApi.Application/Videos/VideoProcessedWebhook.cs`
@@ -2171,7 +2171,7 @@ git commit -m "feat: add Videos/VideoProcessedWebhook with HMAC validation"
 
 ---
 
-## Task 16: Reactions — ReactToVideo e RemoveReaction
+## Task 16: ✅ Reactions — ReactToVideo e RemoveReaction
 
 **Files:**
 - Create: `src/VideoApi.Application/Reactions/ReactToVideo.cs`
@@ -2221,7 +2221,7 @@ git commit -m "feat: add Comments slices"
 
 ---
 
-## Task 18: Integration Tests
+## Task 18: ✅ Integration Tests
 
 **Files:**
 - Create: `tests/VideoApi.IntegrationTests/TestWebAppFactory.cs`
