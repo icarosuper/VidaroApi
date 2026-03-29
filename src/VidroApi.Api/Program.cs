@@ -5,6 +5,7 @@ using Serilog;
 using VidroApi.Api.BackgroundServices;
 using VidroApi.Api.Extensions;
 using VidroApi.Api.Middleware;
+using VidroApi.Api;
 using VidroApi.Application;
 using VidroApi.Infrastructure;
 using VidroApi.Infrastructure.Settings;
@@ -19,40 +20,7 @@ builder.Services.AddApplication(typeof(Program).Assembly);
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // Settings validation
-builder.Services.AddOptions<JwtSettings>()
-    .BindConfiguration("Jwt")
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
-
-builder.Services.AddOptions<MinioSettings>()
-    .BindConfiguration("MinIO")
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
-
-builder.Services.AddOptions<ChannelSettings>()
-    .BindConfiguration("ChannelSettings")
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
-
-builder.Services.AddOptions<VideoSettings>()
-    .BindConfiguration("VideoSettings")
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
-
-builder.Services.AddOptions<TrendingSettings>()
-    .BindConfiguration("TrendingSettings")
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
-
-builder.Services.AddOptions<WebhookSettings>()
-    .BindConfiguration("Webhook")
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
-
-builder.Services.AddOptions<ApiSettings>()
-    .BindConfiguration("Api")
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
+builder.Services.AddSettings();
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()!;

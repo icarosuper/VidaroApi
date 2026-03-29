@@ -1,4 +1,5 @@
 using CSharpFunctionalExtensions;
+using FluentValidation;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -18,6 +19,16 @@ public static class ListTrendingVideos
     public record Command : IRequest<Result<Response, Error>>
     {
         public int Limit { get; init; }
+    }
+
+    public class Validator : AbstractValidator<Command>
+    {
+        public Validator(IOptions<ListTrendingVideosSettings> options)
+        {
+            RuleFor(x => x.Limit)
+                .InclusiveBetween(1, options.Value.MaxLimit)
+                .WithMessage(x => $"Limit must be between 1 and {options.Value.MaxLimit}.");
+        }
     }
 
     public record Response
@@ -42,10 +53,10 @@ public static class ListTrendingVideos
     public static void MapEndpoint(IEndpointRouteBuilder app) =>
         app.MapGet("/v1/videos/trending", async (
             IMediator mediator,
-            int limit = 20,
+            int limit,
             CancellationToken ct = default) =>
         {
-            var cmd = new Command { Limit = Math.Clamp(limit, 1, 50) };
+            var cmd = new Command { Limit = limit };
             var result = await mediator.Send(cmd, ct);
             return result.ToApiResult(StatusCodes.Status200OK);
         });

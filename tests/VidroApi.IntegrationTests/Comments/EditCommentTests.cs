@@ -7,9 +7,9 @@ using System.Text.Json;
 using FluentAssertions;
 using VidroApi.IntegrationTests.Common;
 
-namespace VidroApi.IntegrationTests.Videos;
+namespace VidroApi.IntegrationTests.Comments;
 
-public class ListTrendingVideosTests(ApiFactory factory) : IClassFixture<ApiFactory>
+public class EditCommentTests(ApiFactory factory) : IClassFixture<ApiFactory>
 {
     private readonly HttpClient _client = factory.CreateClient();
     private const string WebhookSecret = "test-webhook-secret";
@@ -21,90 +21,120 @@ public class ListTrendingVideosTests(ApiFactory factory) : IClassFixture<ApiFact
     };
 
     [Fact]
-    public async Task ListTrendingVideos_WithNoVideos_ReturnsEmptyList()
+    public async Task EditComment_WithoutAuthentication_Returns401()
     {
-        var response = await _client.GetAsync("/v1/videos/trending?limit=10");
+        var response = await _client.PutAsJsonAsync(
+            $"/v1/comments/{Guid.NewGuid()}",
+            new { content = "Updated" });
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
-        body.GetProperty("data").GetProperty("videos").GetArrayLength().Should().Be(0);
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
-    public async Task ListTrendingVideos_WithoutAuthentication_Returns200()
+    public async Task EditComment_CommentNotFound_Returns404()
     {
-        var response = await _client.GetAsync("/v1/videos/trending?limit=10");
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task ListTrendingVideos_ReturnsOnlyReadyPublicVideos()
-    {
-        var (accessToken, channelId) = await CreateChannelAndGetIds();
-
-        await CreateReadyVideoAsync(accessToken, channelId, "Ready Public Video", visibility: 0);
-
-        // Pending upload — not Ready
+        var accessToken = await SignUpAndGetAccessToken();
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        await _client.PostAsJsonAsync($"/v1/channels/{channelId}/videos", new
-        {
-            title = "Pending Video",
-            tags = Array.Empty<string>(),
-            visibility = 0
-        });
 
-        // Private ready video
-        await CreateReadyVideoAsync(accessToken, channelId, "Private Video", visibility: 2);
+        var response = await _client.PutAsJsonAsync(
+            $"/v1/comments/{Guid.NewGuid()}",
+            new { content = "Updated" });
 
-        var response = await _client.GetAsync("/v1/videos/trending?limit=10");
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
-        var videos = body.GetProperty("data").GetProperty("videos");
-
-        var titles = Enumerable.Range(0, videos.GetArrayLength())
-            .Select(i => videos[i].GetProperty("title").GetString())
-            .ToList();
-
-        titles.Should().Contain("Ready Public Video");
-        titles.Should().NotContain("Pending Video");
-        titles.Should().NotContain("Private Video");
+        body.GetProperty("code").GetString().Should().Be("comment.not_found");
     }
 
     [Fact]
-    public async Task ListTrendingVideos_ReturnsThumbnailUrl()
+    public async Task EditComment_NotOwner_Returns403()
     {
-        var (accessToken, channelId) = await CreateChannelAndGetIds();
-        await CreateReadyVideoAsync(accessToken, channelId, "Video With Thumbnail");
+        var (ownerToken, channelId) = await CreateChannelAndGetIds();
+        var viewerToken = await SignUpAndGetAccessToken();
+        var anotherToken = await SignUpAndGetAccessToken();
+        var videoId = await CreateReadyVideoAsync(ownerToken, channelId);
 
-        var response = await _client.GetAsync("/v1/videos/trending?limit=10");
+        var commentId = await AddCommentAsync(viewerToken, videoId, "Original content");
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", anotherToken);
+        var response = await _client.PutAsJsonAsync(
+            $"/v1/comments/{commentId}",
+            new { content = "Hijacked content" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
-        var video = body.GetProperty("data").GetProperty("videos")[0];
-
-        video.GetProperty("thumbnailUrl").GetString().Should().NotBeNullOrWhiteSpace();
+        body.GetProperty("code").GetString().Should().Be("comment.not_owner");
     }
 
     [Fact]
-    public async Task ListTrendingVideos_RespectsLimitParameter()
+    public async Task EditComment_ValidEdit_Returns204()
     {
-        var (accessToken, channelId) = await CreateChannelAndGetIds();
+        var (ownerToken, channelId) = await CreateChannelAndGetIds();
+        var viewerToken = await SignUpAndGetAccessToken();
+        var videoId = await CreateReadyVideoAsync(ownerToken, channelId);
 
-        for (var i = 0; i < 3; i++)
-            await CreateReadyVideoAsync(accessToken, channelId, $"Video {i}");
+        var commentId = await AddCommentAsync(viewerToken, videoId, "Original content");
 
-        var response = await _client.GetAsync("/v1/videos/trending?limit=2");
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
-        body.GetProperty("data").GetProperty("videos").GetArrayLength().Should().Be(2);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", viewerToken);
+        var response = await _client.PutAsJsonAsync(
+            $"/v1/comments/{commentId}",
+            new { content = "Edited content" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
-    private async Task<Guid> CreateReadyVideoAsync(string accessToken, Guid channelId, string title, int visibility = 0)
+    [Fact]
+    public async Task EditComment_EmptyContent_Returns400()
+    {
+        var (ownerToken, channelId) = await CreateChannelAndGetIds();
+        var viewerToken = await SignUpAndGetAccessToken();
+        var videoId = await CreateReadyVideoAsync(ownerToken, channelId);
+
+        var commentId = await AddCommentAsync(viewerToken, videoId, "Original content");
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", viewerToken);
+        var response = await _client.PutAsJsonAsync(
+            $"/v1/comments/{commentId}",
+            new { content = "" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task EditComment_DeletedComment_Returns404()
+    {
+        var (ownerToken, channelId) = await CreateChannelAndGetIds();
+        var viewerToken = await SignUpAndGetAccessToken();
+        var videoId = await CreateReadyVideoAsync(ownerToken, channelId);
+
+        var commentId = await AddCommentAsync(viewerToken, videoId, "Will be deleted");
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", viewerToken);
+        await _client.DeleteAsync($"/v1/comments/{commentId}");
+
+        var response = await _client.PutAsJsonAsync(
+            $"/v1/comments/{commentId}",
+            new { content = "Editing deleted comment" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    private async Task<Guid> AddCommentAsync(string accessToken, Guid videoId, string content)
+    {
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        var response = await _client.PostAsJsonAsync($"/v1/videos/{videoId}/comments", new { content });
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
+        return Guid.Parse(body.GetProperty("data").GetProperty("commentId").GetString()!);
+    }
+
+    private async Task<Guid> CreateReadyVideoAsync(string accessToken, Guid channelId)
     {
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
         var createResponse = await _client.PostAsJsonAsync($"/v1/channels/{channelId}/videos", new
         {
-            title,
+            title = "Test Video",
             tags = Array.Empty<string>(),
-            visibility
+            visibility = 0
         });
         var createBody = await createResponse.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
         var videoId = Guid.Parse(createBody.GetProperty("data").GetProperty("videoId").GetString()!);

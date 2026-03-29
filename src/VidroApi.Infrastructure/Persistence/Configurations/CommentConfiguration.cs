@@ -17,12 +17,16 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
 
         builder.Property(c => c.VideoId).HasColumnName("video_id");
         builder.Property(c => c.UserId).HasColumnName("user_id");
+        builder.Property(c => c.ParentCommentId).HasColumnName("parent_comment_id");
 
         builder.Property(c => c.Content)
             .HasColumnName("content")
             .HasMaxLength(Comment.ContentMaxLength)
             .IsRequired();
 
+        builder.Property(c => c.LikeCount).HasColumnName("like_count");
+        builder.Property(c => c.DislikeCount).HasColumnName("dislike_count");
+        builder.Property(c => c.ReplyCount).HasColumnName("reply_count");
         builder.Property(c => c.IsDeleted).HasColumnName("is_deleted");
 
         builder.HasOne(c => c.Video)
@@ -32,5 +36,13 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
         builder.HasOne(c => c.User)
             .WithMany()
             .HasForeignKey(c => c.UserId);
+
+        builder.HasOne(c => c.ParentComment)
+            .WithMany(p => p.Replies)
+            .HasForeignKey(c => c.ParentCommentId);
+
+        builder.HasMany(c => c.Reactions)
+            .WithOne(r => r.Comment)
+            .HasForeignKey(r => r.CommentId);
     }
 }

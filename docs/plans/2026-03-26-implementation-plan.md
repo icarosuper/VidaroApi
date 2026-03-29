@@ -2204,20 +2204,57 @@ git commit -m "feat: add Reactions slices (upsert like/dislike)"
 
 ---
 
-## Task 17: Comments — AddComment, ListComments, DeleteComment
+## Task 17: ✅ Comments — escopo completo
+
+### Task 17a: ✅ Preparação do modelo
+
+**Alterações no domínio:**
+- `Comment`: adicionados `ParentCommentId? (Guid)` (self-referential FK, 1 nível de profundidade), `LikeCount (int)`, `DislikeCount (int)`, `ReplyCount (int)`. Método de soft delete renomeado para `SoftDelete(now)` para deixar explícito que não é deleção física.
+- `Video`: adicionado `CommentCount (int)` (counter denormalizado, atualizado via `ExecuteUpdateAsync`). Também exposto em `GetVideo` response.
+- Nova entidade `CommentReaction`: `CommentId`, `UserId`, `Type (ReactionType)` — suporta Like e Dislike.
+- Nova configuração: `src/VidroApi.Infrastructure/Persistence/Configurations/CommentReactionConfiguration.cs`
+- Novo `DbSet<CommentReaction>` no `AppDbContext`
+- Migration: `AddCommentsFeatureMigration` (convenção: sufixo `Migration` obrigatório)
+
+---
+
+### Task 17b: ✅ Features de comentários
 
 **Files:**
-- Create: `src/VideoApi.Application/Comments/AddComment.cs`
-- Create: `src/VideoApi.Application/Comments/ListComments.cs`
-- Create: `src/VideoApi.Application/Comments/DeleteComment.cs`
+- `src/VidroApi.Api/Features/Comments/AddComment.cs`
+- `src/VidroApi.Api/Features/Comments/EditComment.cs`
+- `src/VidroApi.Api/Features/Comments/DeleteComment.cs`
+- `src/VidroApi.Api/Features/Comments/ListComments.cs`
+- `src/VidroApi.Api/Features/Comments/ListReplies.cs`
+- `src/VidroApi.Api/Features/Comments/ReactToComment.cs`
+- `src/VidroApi.Api/Features/Comments/RemoveCommentReaction.cs`
 
-Seguir o mesmo padrão dos slices anteriores. `ListComments` usa cursor-based pagination igual ao `ListChannelVideos`.
+**Decisões tomadas:**
 
-```bash
-dotnet build
-git add .
-git commit -m "feat: add Comments slices"
-```
+`AddComment` — aceita `ParentCommentId?` opcional. Valida que o pai existe, pertence ao mesmo vídeo e não é ele próprio uma resposta (sem nesting além de 1 nível). Incrementa `Video.CommentCount` e, se for resposta, `ParentComment.ReplyCount`, ambos via `ExecuteUpdateAsync` em transação. Validadores nas features com `Request+Command` devem ser `AbstractValidator<Command>` (não `Request`) para serem invocados pelo pipeline MediatR.
+
+`EditComment` — apenas o autor pode editar. Chama `comment.Edit(content, now)`. Retorna 404 para comentários soft-deletados.
+
+`DeleteComment` — soft delete via `comment.SoftDelete(now)`. Decrementa `Video.CommentCount` e, se for resposta, `ParentComment.ReplyCount`, ambos em transação. Apenas o autor pode deletar.
+
+`ListComments` — apenas comentários raiz (`ParentCommentId == null`). Parâmetro `sort=Recent|Popular`. `Recent`: cursor-based pagination por `CreatedAt DESC`. `Popular`: lista fixa (sem cursor) por `LikeCount DESC, CreatedAt DESC`. Comentários soft-deletados aparecem com `content: null` e `isDeleted: true` (para preservar contexto das respostas). Dono do vídeo pode ver comentários mesmo em vídeos privados (passa `RequestingUserId` via `ClaimsPrincipal`).
+
+`ListReplies` — respostas de um comentário raiz. Cursor-based pagination por `CreatedAt ASC` (ordem cronológica).
+
+`ReactToComment` — upsert: sem reação → adiciona + incrementa; mesmo tipo → no-op; tipo diferente → `reaction.ChangeType(type)` + troca os contadores. Suporta Like e Dislike (`LikeCount` e `DislikeCount`).
+
+`RemoveCommentReaction` — remove e decrementa o contador correspondente ao tipo que estava registrado. Transação.
+
+**Limites máximos** (configurados via settings por feature, não hardcoded):
+- `ListCommentsSettings`: `MaxLimit=100`, `MaxPopularLimit=50`
+- `ListRepliesSettings`: `MaxLimit=50`
+
+---
+
+### Task 17c: ✅ Testes
+
+- Unit tests em `tests/VidroApi.UnitTests/Domain/CommentTests.cs`
+- Integration tests em `tests/VidroApi.IntegrationTests/Comments/` (7 arquivos, um por feature)
 
 ---
 
