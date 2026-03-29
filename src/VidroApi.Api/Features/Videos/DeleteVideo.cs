@@ -40,11 +40,7 @@ public static class DeleteVideo
     {
         public async ValueTask<UnitResult<Error>> Handle(Command cmd, CancellationToken ct)
         {
-            var video = await db.Videos
-                .Include(v => v.Channel)
-                .Include(v => v.Artifacts)
-                .Include(v => v.Metadata)
-                .FirstOrDefaultAsync(v => v.Id == cmd.VideoId, ct);
+            var video = await FetchVideo(cmd.VideoId, ct);
 
             if (video is null)
                 return CommonErrors.NotFound(nameof(Domain.Entities.Video), cmd.VideoId);
@@ -55,11 +51,29 @@ public static class DeleteVideo
                     ? CommonErrors.NotFound(nameof(Domain.Entities.Video), cmd.VideoId)
                     : Errors.Video.NotOwner();
 
-            var reactions = await db.Reactions.Where(r => r.VideoId == cmd.VideoId).ToListAsync(ct);
-            db.Reactions.RemoveRange(reactions);
+            DeleteVideo(video);
+            await db.SaveChangesAsync(ct);
 
-            var comments = await db.Comments.Where(c => c.VideoId == cmd.VideoId).ToListAsync(ct);
-            db.Comments.RemoveRange(comments);
+            await DeleteMinioObjectsAsync(video, ct);
+
+            return UnitResult.Success<Error>();
+        }
+
+        private Task<Domain.Entities.Video?> FetchVideo(Guid videoId, CancellationToken ct)
+        {
+            return db.Videos
+                .Include(v => v.Channel)
+                .Include(v => v.Artifacts)
+                .Include(v => v.Metadata)
+                .Include(v => v.Reactions)
+                .Include(v => v.Comments)
+                .FirstOrDefaultAsync(v => v.Id == videoId, ct);
+        }
+
+        private void DeleteVideo(Domain.Entities.Video video)
+        {
+            db.Reactions.RemoveRange(video.Reactions);
+            db.Comments.RemoveRange(video.Comments);
 
             if (video.Artifacts is not null)
                 db.VideoArtifacts.Remove(video.Artifacts);
@@ -68,11 +82,6 @@ public static class DeleteVideo
                 db.VideoMetadata.Remove(video.Metadata);
 
             db.Videos.Remove(video);
-            await db.SaveChangesAsync(ct);
-
-            await DeleteMinioObjectsAsync(video, ct);
-
-            return UnitResult.Success<Error>();
         }
 
         private async Task DeleteMinioObjectsAsync(Domain.Entities.Video video, CancellationToken ct)

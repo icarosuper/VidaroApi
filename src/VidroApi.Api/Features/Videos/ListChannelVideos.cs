@@ -19,23 +19,23 @@ public static class ListChannelVideos
         public int Limit { get; init; }
     }
 
-    public record VideoSummary
-    {
-        public Guid VideoId { get; init; }
-        public string Title { get; init; } = null!;
-        public string? Description { get; init; }
-        public List<string> Tags { get; init; } = [];
-        public string Visibility { get; init; } = null!;
-        public string Status { get; init; } = null!;
-        public int ViewCount { get; init; }
-        public int LikeCount { get; init; }
-        public DateTimeOffset CreatedAt { get; init; }
-    }
-
     public record Response
     {
         public List<VideoSummary> Videos { get; init; } = [];
         public DateTimeOffset? NextCursor { get; init; }
+        
+        public record VideoSummary
+        {
+            public Guid VideoId { get; init; }
+            public string Title { get; init; } = null!;
+            public string? Description { get; init; }
+            public List<string> Tags { get; init; } = [];
+            public string Visibility { get; init; } = null!;
+            public string Status { get; init; } = null!;
+            public int ViewCount { get; init; }
+            public int LikeCount { get; init; }
+            public DateTimeOffset CreatedAt { get; init; }
+        }
     }
 
     public static void MapEndpoint(IEndpointRouteBuilder app) =>
@@ -68,20 +68,36 @@ public static class ListChannelVideos
             if (channel is null)
                 return CommonErrors.NotFound(nameof(Domain.Entities.Channel), cmd.ChannelId);
 
-            var query = db.Videos.Where(v => v.ChannelId == cmd.ChannelId).AsQueryable();
-
             var isOwner = channel.UserId == cmd.RequestingUserId;
+            var videos = await FetchChannelVideos(cmd.ChannelId, isOwner, cmd.Cursor, cmd.Limit, ct);
+
+            var nextCursor = videos.Count == cmd.Limit
+                ? videos[^1].CreatedAt
+                : (DateTimeOffset?)null;
+
+            return new Response
+            {
+                Videos = videos,
+                NextCursor = nextCursor
+            };
+        }
+
+        private Task<List<Response.VideoSummary>> FetchChannelVideos(
+            Guid channelId, bool isOwner, DateTimeOffset? cursor, int limit, CancellationToken ct)
+        {
+            var query = db.Videos.Where(v => v.ChannelId == channelId).AsQueryable();
+
             if (!isOwner)
                 query = query.Where(v => v.Visibility == VideoVisibility.Public
                                          && v.Status == VideoStatus.Ready);
 
-            if (cmd.Cursor.HasValue)
-                query = query.Where(v => v.CreatedAt < cmd.Cursor.Value);
+            if (cursor.HasValue)
+                query = query.Where(v => v.CreatedAt < cursor.Value);
 
-            var videos = await query
+            return query
                 .OrderByDescending(v => v.CreatedAt)
-                .Take(cmd.Limit)
-                .Select(v => new VideoSummary
+                .Take(limit)
+                .Select(v => new Response.VideoSummary
                 {
                     VideoId = v.Id,
                     Title = v.Title,
@@ -94,14 +110,6 @@ public static class ListChannelVideos
                     CreatedAt = v.CreatedAt
                 })
                 .ToListAsync(ct);
-
-            var nextCursor = videos.Count == cmd.Limit ? videos[^1].CreatedAt : (DateTimeOffset?)null;
-
-            return new Response
-            {
-                Videos = videos,
-                NextCursor = nextCursor
-            };
         }
     }
 }

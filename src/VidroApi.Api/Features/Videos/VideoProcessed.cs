@@ -90,13 +90,18 @@ public static class VideoProcessed
 
             var now = clock.UtcNow;
 
-            if (!cmd.Success)
-            {
+            if (cmd.Success)
+                PersistSuccessfulProcessing(video, cmd, now);
+            else
                 video.MarkAsFailed(now);
-                await db.SaveChangesAsync(ct);
-                return UnitResult.Success<Error>();
-            }
 
+            await db.SaveChangesAsync(ct);
+
+            return UnitResult.Success<Error>();
+        }
+
+        private void PersistSuccessfulProcessing(Video video, Command cmd, DateTimeOffset now)
+        {
             var artifacts = new VideoArtifacts(
                 cmd.VideoId,
                 cmd.ProcessedPath!,
@@ -118,9 +123,6 @@ public static class VideoProcessed
             video.MarkAsReady(now);
             db.VideoArtifacts.Add(artifacts);
             db.VideoMetadata.Add(metadata);
-            await db.SaveChangesAsync(ct);
-
-            return UnitResult.Success<Error>();
         }
     }
 }

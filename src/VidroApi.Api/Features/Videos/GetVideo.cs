@@ -40,7 +40,9 @@ public static class GetVideo
             IMediator mediator,
             CancellationToken ct) =>
         {
-            Guid? requestingUserId = user.Identity?.IsAuthenticated == true ? user.GetUserId() : null;
+            Guid? requestingUserId = user.Identity?.IsAuthenticated == true
+                ? user.GetUserId()
+                : null;
             var cmd = new Command { VideoId = videoId, RequestingUserId = requestingUserId };
             var result = await mediator.Send(cmd, ct);
             return result.ToApiResult(StatusCodes.Status200OK);
@@ -51,12 +53,7 @@ public static class GetVideo
     {
         public async ValueTask<Result<Response, Error>> Handle(Command cmd, CancellationToken ct)
         {
-            var video = await db.Videos
-                .Include(v => v.Channel)
-                .FirstOrDefaultAsync(v => v.Id == cmd.VideoId
-                    && (v.Channel.UserId == cmd.RequestingUserId
-                        || (v.Status == VideoStatus.Ready && v.Visibility != VideoVisibility.Private)),
-                    ct);
+            var video = await FetchVideo(cmd.VideoId, cmd.RequestingUserId, ct);
 
             if (video is null)
                 return CommonErrors.NotFound(nameof(Domain.Entities.Video), cmd.VideoId);
@@ -76,6 +73,16 @@ public static class GetVideo
                 DislikeCount = video.DislikeCount,
                 CreatedAt = video.CreatedAt
             };
+        }
+
+        private Task<Domain.Entities.Video?> FetchVideo(Guid videoId, Guid? requestingUserId, CancellationToken ct)
+        {
+            return db.Videos
+                .Include(v => v.Channel)
+                .FirstOrDefaultAsync(v => v.Id == videoId
+                    && (v.Channel.UserId == requestingUserId
+                        || (v.Status == VideoStatus.Ready && v.Visibility != VideoVisibility.Private)),
+                    ct);
         }
     }
 }
