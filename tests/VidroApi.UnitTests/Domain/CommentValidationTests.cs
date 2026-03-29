@@ -26,6 +26,18 @@ public class CommentValidationTests
         act.Should().Throw<ArgumentException>();
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Edit_ShouldThrow_WhenContentIsNullOrWhiteSpace(string content)
+    {
+        var comment = new Comment(VideoId, UserId, "Valid content", parentCommentId: null, Now);
+
+        var act = () => comment.Edit(content, Now.AddMinutes(1));
+
+        act.Should().Throw<ArgumentException>();
+    }
+
     [Fact]
     public void Edit_ShouldThrow_WhenContentExceedsMaxLength()
     {

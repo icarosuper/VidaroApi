@@ -19,6 +19,8 @@ public class CommentTests
         comment.Content.Should().Be("Great video!");
         comment.ParentCommentId.Should().BeNull();
         comment.LikeCount.Should().Be(0);
+        comment.DislikeCount.Should().Be(0);
+        comment.ReplyCount.Should().Be(0);
         comment.IsDeleted.Should().BeFalse();
         comment.CreatedAt.Should().Be(Now);
         comment.UpdatedAt.Should().BeNull();
