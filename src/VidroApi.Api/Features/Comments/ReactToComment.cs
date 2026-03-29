@@ -60,9 +60,9 @@ public static class ReactToComment
             if (!commentExists)
                 return Errors.Comment.NotFound(cmd.CommentId);
 
-            var existingReaction = await FetchReaction(cmd.CommentId, cmd.UserId, ct);
-
             await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+            var existingReaction = await FetchReaction(cmd.CommentId, cmd.UserId, ct);
 
             if (existingReaction is null)
             {

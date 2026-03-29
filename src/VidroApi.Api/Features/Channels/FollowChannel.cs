@@ -49,12 +49,12 @@ public static class FollowChannel
             if (isOwnChannel)
                 return Errors.Channel.CannotFollowOwnChannel();
 
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+
             var alreadyFollowing = await db.ChannelFollowers
                 .AnyAsync(cf => cf.ChannelId == cmd.ChannelId && cf.UserId == cmd.UserId, ct);
             if (alreadyFollowing)
                 return Errors.Channel.AlreadyFollowing();
-
-            await using var tx = await db.Database.BeginTransactionAsync(ct);
 
             db.ChannelFollowers.Add(new ChannelFollower(channel.Id, cmd.UserId, clock.UtcNow));
             await db.SaveChangesAsync(ct);

@@ -15,6 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Reaction> Reactions => Set<Reaction>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<CommentReaction> CommentReactions => Set<CommentReaction>();
+    public DbSet<PendingStorageCleanup> PendingStorageCleanups => Set<PendingStorageCleanup>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

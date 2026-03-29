@@ -37,6 +37,8 @@ public static class DeleteComment
     {
         public async ValueTask<UnitResult<Error>> Handle(Command cmd, CancellationToken ct)
         {
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+
             var comment = await FetchActiveComment(cmd.CommentId, ct);
             if (comment is null)
                 return Errors.Comment.NotFound(cmd.CommentId);
@@ -45,15 +47,15 @@ public static class DeleteComment
             if (!isOwner)
                 return Errors.Comment.NotOwner();
 
-            comment.SoftDelete(clock.UtcNow);
+            var softDeletedCount = await SoftDeleteComment(cmd.CommentId, ct);
 
-            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            if (softDeletedCount > 0)
+            {
+                await DecrementVideoCommentCount(comment.VideoId, ct);
 
-            await db.SaveChangesAsync(ct);
-            await DecrementVideoCommentCount(comment.VideoId, ct);
-
-            if (comment.ParentCommentId.HasValue)
-                await DecrementParentReplyCount(comment.ParentCommentId.Value, ct);
+                if (comment.ParentCommentId.HasValue)
+                    await DecrementParentReplyCount(comment.ParentCommentId.Value, ct);
+            }
 
             await tx.CommitAsync(ct);
 
@@ -63,6 +65,15 @@ public static class DeleteComment
         private Task<Comment?> FetchActiveComment(Guid commentId, CancellationToken ct)
         {
             return db.Comments.FirstOrDefaultAsync(c => c.Id == commentId && !c.IsDeleted, ct);
+        }
+
+        private Task<int> SoftDeleteComment(Guid commentId, CancellationToken ct)
+        {
+            return db.Comments
+                .Where(c => c.Id == commentId && !c.IsDeleted)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(c => c.IsDeleted, true)
+                    .SetProperty(c => c.UpdatedAt, clock.UtcNow), ct);
         }
 
         private Task<int> DecrementVideoCommentCount(Guid videoId, CancellationToken ct)

@@ -65,5 +65,10 @@ public static class SettingsRegistration
             .BindConfiguration("ListRepliesSettings")
             .ValidateDataAnnotations()
             .ValidateOnStart();
+
+        services.AddOptions<StorageCleanupSettings>()
+            .BindConfiguration("StorageCleanupSettings")
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
     }
 }

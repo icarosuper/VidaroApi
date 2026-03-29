@@ -18,6 +18,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **No counter methods on entities** — counters (`LikeCount`, `DislikeCount`, `ViewCount`, `FollowerCount`) are updated atomically via `ExecuteUpdateAsync` in the feature handler. Entity methods like `IncrementLikeCount()` are not safe under concurrency and must not be added.
 - **`ExecuteUpdateAsync` always goes in a private method** — never inline in `Handle`. Name the method after its intent (e.g. `IncrementFollowerCount`, `DecrementFollowerCount`). Return `Task<int>` (not `Task`) to match the return type of `ExecuteUpdateAsync` exactly and avoid implicit upcasting overhead.
 - **Use a transaction whenever `SaveChangesAsync` and `ExecuteUpdateAsync` must be atomic** — wrap both in `await using var tx = await db.Database.BeginTransactionAsync(ct)` and call `await tx.CommitAsync(ct)` at the end. The `await using` ensures automatic rollback on failure.
+- **Begin the transaction before any read that participates in a write sequence** — any `FirstOrDefaultAsync` or `AnyAsync` whose result is used to decide whether to insert, update, or delete must be inside the transaction. Reads that are purely for 404 guards (existence checks with no corresponding write) may stay outside. Placing the read outside the transaction and the write inside creates a race window where the read result is stale by the time the write executes.
+- **Use `ExecuteDeleteAsync` instead of `Remove` + `SaveChangesAsync` when the deleted entity drives a counter update** — `ExecuteDeleteAsync` returns the number of rows actually deleted. Guard the counter update on `deletedCount > 0` to prevent double-decrements under concurrent requests. Example: `RemoveReaction`, `UnfollowChannel`. Never load a collection into memory just to delete it; use `ExecuteDeleteAsync` with a `Where` filter instead.
+- **Use `ExecuteUpdateAsync` with a guard condition for idempotent state transitions** — when a state transition must happen exactly once (e.g. soft-delete), perform it as `ExecuteUpdateAsync(WHERE current_state)` and check the returned row count. Only apply side effects (counter updates, etc.) if the count is greater than zero. This prevents double side-effects when two concurrent requests race through the same guard check.
 - **No value objects** unless a type has real validation/equality rules (none identified yet)
 - **Base classes:** `BaseEntity` (Id + CreatedAt, both `init`) and `BaseAuditableEntity : BaseEntity` (+ `UpdatedAt` with `private set`, mutated via `SetUpdatedAt(now)`)
 - **Errors live in `Domain/Errors/`**. Three kinds:
@@ -147,7 +150,7 @@ Domain ← Application ← Infrastructure ← Api
 - **Domain** — entities, enums, `DomainError`. No external dependencies.
 - **Application** — one file per feature (slice). Defines interfaces (`IMinioService`, `IJobQueueService`) that Infrastructure implements. No EF Core here.
 - **Infrastructure** — EF Core `AppDbContext`, `MinioService`, `RedisJobQueueService`, `TokenService`, `DateTimeProvider`, settings classes. All external I/O lives here. Entity mappings use `IEntityTypeConfiguration<T>` (one file per entity in `Persistence/Configurations/`). `OnModelCreating` applies `DeleteBehavior.Restrict` globally for all FKs.
-- **Api** — `Program.cs` only. Registers DI, middleware, JWT, and calls `FeatureName.MapEndpoint(app)` for every slice.
+- **Api** — `Program.cs` only. Registers DI, middleware, JWT, calls `FeatureName.MapEndpoint(app)` for every slice, and registers background services (`BackgroundServices/`).
 
 ### Vertical Slice pattern
 
@@ -207,6 +210,24 @@ public static class FeatureName
 
 `ApiResponse` and `ResultExtensions` live in `Api/Common/` and `Api/Extensions/`.
 
+### Enums in responses
+
+**Never return a raw enum string or a raw integer.** Always use `EnumValue` (`Api/Common/EnumValue.cs`) so the consumer gets both the numeric ID and the human-readable string:
+
+```json
+{ "visibility": { "id": 0, "value": "Public" } }
+```
+
+In handlers (non-LINQ context), use the static helper:
+```csharp
+Visibility = EnumValue.From(video.Visibility),
+```
+
+In EF Core LINQ projections (`.Select(v => ...)`), use inline construction because `EnumValue.From` is a custom method that cannot be translated to SQL:
+```csharp
+Visibility = new EnumValue { Id = (int)v.Visibility, Value = v.Visibility.ToString() },
+```
+
 ### Integration with VideoProcessor (Go)
 
 The VideoProcessor is a separate service at `../VideoProcessor`. Integration points:
@@ -236,15 +257,20 @@ DIY JWT — no ASP.NET Core Identity. `TokenService` (Infrastructure) generates 
 - `MinIO` — endpoint, credentials, bucket, `UploadUrlTtlHours`
 - `Jwt` — secret, token expiry
 - `VideoSettings:MaxTagsPerVideo` — validated in slices, not hardcoded
+- `VideoSettings:ReconciliationIntervalMinutes` — interval for `VideoReconciliationService`
 - `TrendingSettings` — score weights and time decay for `GET /videos/trending`
 - `Webhook:Secret` — HMAC secret shared with VideoProcessor
+- `StorageCleanupSettings:IntervalMinutes`, `StorageCleanupSettings:BatchSize` — controls `StorageCleanupService`
 
 ## Design decisions
 
 - **Counters are denormalized** — `LikeCount`, `DislikeCount`, `ViewCount` on `Videos` and `FollowerCount` on `Channels` are updated atomically via `ExecuteUpdateAsync`. Never use `COUNT(*)` for these.
 - **Cursor-based pagination everywhere** — use `CreatedAt` as cursor, never `OFFSET`.
+- **Declare composite indexes for every common query pattern** — whenever a query filters by two or more columns together (e.g. `WHERE video_id = ? AND parent_comment_id IS NULL`, `WHERE status = ? AND visibility = ?`), add a composite `HasIndex` in the entity's `IEntityTypeConfiguration`. EF Core auto-creates single-column FK indexes, but never composite ones. Add the index in the configuration file alongside the rest of the mapping, not in a migration.
 - **Videos belong to Channels, not Users** — `Video.ChannelId → Channel.UserId`. A user can own multiple channels.
 - **`VideoArtifacts` and `VideoMetadata` are separate tables** — 1:1 with `Videos`, nullable until processing completes.
+- **`DeleteBehavior.Restrict` is global** — `OnModelCreating` enforces `Restrict` on every FK. Any handler that hard-deletes an entity must manually delete all dependents first, in leaf-to-root order. The full dependency chain is: `CommentReactions → Comments (replies before roots) → Reactions → VideoArtifacts → VideoMetadata → Videos → ChannelFollowers → Channel`. Never rely on database cascade; always delete explicitly via `ExecuteDeleteAsync`.
+- **MinIO cleanup goes through `PendingStorageCleanup`** — never call `IMinioService` directly from a delete handler. Instead, stage `PendingStorageCleanup` records (one per object path or prefix) inside the same transaction that deletes the DB rows. `StorageCleanupService` processes the table in the background. Use `isPrefix: true` for paths that require `DeleteObjectsByPrefixAsync` (HLS segments, thumbnails folder).
 - **Single presigned PUT URL for upload** — multipart is planned but not implemented. See `docs/plans/` for future work.
 
 ## Implementation plan

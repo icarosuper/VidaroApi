@@ -40,6 +40,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 builder.Services.AddOpenApi();
 builder.Services.AddHostedService<VideoReconciliationService>();
+builder.Services.AddHostedService<StorageCleanupService>();
 
 var app = builder.Build();
 
