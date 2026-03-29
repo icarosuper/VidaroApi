@@ -10,7 +10,7 @@
 
 ---
 
-## Task 1: Scaffold da Solution
+## Task 1: ✅ Scaffold da Solution
 
 **Files:**
 - Create: `src/VideoApi.Api/VideoApi.Api.csproj`
@@ -121,7 +121,7 @@ git commit -m "chore: scaffold solution with 4 projects and test projects"
 
 ---
 
-## Task 2: Domain — Entidades e Enums
+## Task 2: ✅ Domain — Entidades e Enums
 
 **Files:**
 - Create: `src/VideoApi.Domain/Entities/User.cs`
@@ -368,7 +368,7 @@ git commit -m "feat: add domain entities and enums"
 
 ---
 
-## Task 3: Infrastructure — Settings e Interfaces
+## Task 3: ✅ Infrastructure — Settings e Interfaces
 
 **Files:**
 - Create: `src/VideoApi.Application/Interfaces/IMinioService.cs`
@@ -485,7 +485,7 @@ git commit -m "feat: add application interfaces and infrastructure settings"
 
 ---
 
-## Task 4: Infrastructure — EF Core DbContext
+## Task 4: ✅ Infrastructure — EF Core DbContext
 
 **Files:**
 - Create: `src/VideoApi.Infrastructure/Persistence/AppDbContext.cs`
@@ -675,7 +675,7 @@ git commit -m "feat: add EF Core DbContext and entity configurations"
 
 ---
 
-## Task 5: Infrastructure — Implementações de Serviços
+## Task 5: ✅ Infrastructure — Implementações de Serviços
 
 **Files:**
 - Create: `src/VideoApi.Infrastructure/Services/MinioService.cs`
@@ -847,7 +847,7 @@ git commit -m "feat: add MinIO and Redis service implementations"
 
 ---
 
-## Task 6: Api — Program.cs e configuração base
+## Task 6: ✅ Api — Program.cs e configuração base
 
 **Files:**
 - Modify: `src/VideoApi.Api/Program.cs`
@@ -1075,7 +1075,7 @@ git commit -m "feat: configure Program.cs, DI, JWT auth and exception middleware
 
 ---
 
-## Task 7: Migrations e docker-compose
+## Task 7: ✅ Migrations e docker-compose
 
 **Files:**
 - Create: `docker-compose.yml`
@@ -1154,7 +1154,7 @@ git commit -m "feat: add docker-compose and initial EF Core migration"
 
 ---
 
-## Task 8: Auth — Register
+## Task 8: ✅ Auth — Register
 
 **Files:**
 - Create: `src/VideoApi.Application/Auth/Register.cs`
@@ -1266,7 +1266,7 @@ git commit -m "feat: add Auth/Register slice"
 
 ---
 
-## Task 9: Auth — Login e RefreshToken
+## Task 9: ✅ Auth — Login e RefreshToken
 
 **Files:**
 - Create: `src/VideoApi.Application/Auth/Login.cs`
@@ -1469,7 +1469,7 @@ git commit -m "feat: add Auth/Login and Auth/RefreshToken slices"
 
 ---
 
-## Task 10: Channels — CRUD
+## Task 10: ✅ Channels — CRUD
 
 **Files:**
 - Create: `src/VideoApi.Application/Channels/CreateChannel.cs`
@@ -1622,7 +1622,7 @@ git commit -m "feat: add Channels CRUD slices"
 
 ---
 
-## Task 11: Channels — Follow/Unfollow e ListChannelVideos
+## Task 11: ✅ Channels — Follow/Unfollow e ListChannelVideos
 
 **Files:**
 - Create: `src/VideoApi.Application/Channels/FollowChannel.cs`
@@ -1699,7 +1699,7 @@ git commit -m "feat: add Channels follow/unfollow and list videos slices"
 
 ---
 
-## Task 12: Videos — CreateVideo, ConfirmUpload e ListChannelVideos
+## Task 12: ✅ Videos — CreateVideo, ConfirmUpload e ListChannelVideos
 
 **Files:**
 - Create: `src/VideoApi.Application/Videos/CreateVideo.cs`
@@ -1861,7 +1861,7 @@ git commit -m "feat: add Videos/CreateVideo and Videos/ConfirmUpload slices"
 
 ---
 
-## Task 13: Videos — GetVideo, DeleteVideo
+## Task 13: ✅ Videos — GetVideo, DeleteVideo
 
 **Files:**
 - Create: `src/VideoApi.Application/Videos/GetVideo.cs`
@@ -1973,7 +1973,7 @@ git commit -m "feat: add Videos/GetVideo and Videos/DeleteVideo slices"
 
 ---
 
-## Task 14: Videos — ListFeedVideos e ListTrendingVideos
+## Task 14: ✅ Videos — ListFeedVideos e ListTrendingVideos
 
 **Files:**
 - Create: `src/VideoApi.Application/Videos/ListFeedVideos.cs`
@@ -2012,7 +2012,7 @@ git commit -m "feat: add Videos/ListFeedVideos and Videos/ListTrendingVideos sli
 
 ---
 
-## Task 15: Videos — VideoProcessedWebhook
+## Task 15: ✅ Videos — VideoProcessedWebhook
 
 **Files:**
 - Create: `src/VideoApi.Application/Videos/VideoProcessedWebhook.cs`
@@ -2171,7 +2171,7 @@ git commit -m "feat: add Videos/VideoProcessedWebhook with HMAC validation"
 
 ---
 
-## Task 16: Reactions — ReactToVideo e RemoveReaction
+## Task 16: ✅ Reactions — ReactToVideo e RemoveReaction
 
 **Files:**
 - Create: `src/VideoApi.Application/Reactions/ReactToVideo.cs`
@@ -2221,7 +2221,7 @@ git commit -m "feat: add Comments slices"
 
 ---
 
-## Task 18: Integration Tests
+## Task 18: ✅ Integration Tests
 
 **Files:**
 - Create: `tests/VideoApi.IntegrationTests/TestWebAppFactory.cs`
@@ -2374,6 +2374,85 @@ dotnet ef migrations add AddPlaylists --project src/VidroApi.Infrastructure --st
 
 ---
 
+## Task 20: Videos — UploadVideoThumbnail
+
+**Descrição:** Permite ao dono do vídeo fazer upload de uma thumbnail personalizada, substituindo as geradas automaticamente pelo VideoProcessor.
+
+**Fluxo:** Mesmo padrão do upload de vídeo — API gera uma presigned PUT URL no MinIO e o cliente faz o upload diretamente. Não há webhook; a thumbnail fica disponível imediatamente após o upload.
+
+**Caminho no MinIO:** `thumbnails/{videoId}/custom` (separado das thumbs automáticas em `thumbnails/{videoId}/thumb{n}.jpg`).
+
+**Entities:**
+- `VideoArtifacts` — adicionar campo `CustomThumbnailPath` (`string?`, nullable até o dono fazer upload).
+
+**Files:**
+- Update: `src/VidroApi.Domain/Entities/VideoArtifacts.cs` (campo `CustomThumbnailPath`)
+- Create: `src/VidroApi.Api/Features/Videos/UploadVideoThumbnail.cs`
+- Create: `tests/VidroApi.IntegrationTests/Videos/UploadVideoThumbnailTests.cs`
+- Migration para adicionar `custom_thumbnail_path` em `video_artifacts`
+
+**Endpoints:**
+
+| Method | Route | Auth | Descrição |
+|--------|-------|------|-----------|
+| POST | `/v1/videos/{videoId}/thumbnail` | ✅ dono | Gera presigned URL para upload de thumbnail personalizada |
+
+**Regras de negócio:**
+- Vídeo precisa existir e o usuário ser o dono → 403/404 conforme padrão de visibilidade.
+- Não exige que o vídeo seja `Ready` — dono pode fazer upload de thumbnail em qualquer status.
+- Retorna `uploadUrl` e `expiresAt`, igual ao `CreateVideo`.
+- O campo `CustomThumbnailPath` em `VideoArtifacts` é preenchido na própria resposta (já sabemos o path antes do upload completar, pois é determinístico: `thumbnails/{videoId}/custom`).
+
+---
+
+## Task 21: Users — Foto de Perfil
+
+**Descrição:** Usuários podem fazer upload de uma foto de perfil. Mesmo padrão de presigned URL.
+
+**Caminho no MinIO:** `avatars/{userId}`.
+
+**Entities:**
+- `User` — adicionar campo `AvatarPath` (`string?`).
+
+**Files:**
+- Update: `src/VidroApi.Domain/Entities/User.cs` (campo `AvatarPath`, método `SetAvatar(string path, DateTimeOffset now)`)
+- Update: `src/VidroApi.Infrastructure/Persistence/Configurations/UserConfiguration.cs` (mapear `avatar_path`)
+- Create: `src/VidroApi.Api/Features/Users/UploadAvatar.cs`
+- Create: `tests/VidroApi.IntegrationTests/Users/UploadAvatarTests.cs`
+- Migration para adicionar `avatar_path` em `users`
+
+**Endpoints:**
+
+| Method | Route | Auth | Descrição |
+|--------|-------|------|-----------|
+| POST | `/v1/users/me/avatar` | ✅ | Gera presigned URL para upload de avatar |
+
+**Regras de negócio:**
+- Retorna `uploadUrl` e `expiresAt`.
+- Path é determinístico (`avatars/{userId}`), então `AvatarPath` pode ser gravado no banco imediatamente, antes mesmo do upload completar.
+- Upload substitui o avatar anterior (sem deletar o objeto anterior no MinIO — o path é fixo, o novo upload sobrescreve).
+
+---
+
+## Task 22: Videos — Contagem de Visualizações (decisão pendente)
+
+**Descrição:** Definir e implementar como `ViewCount` é incrementado.
+
+**Opções em aberto:**
+
+| Opção | Prós | Contras |
+|-------|------|---------|
+| **A) Incrementar no `GetVideo`** | Simples de implementar | Conta bots, refreshes, chamadas da API — número inflado e pouco confiável |
+| **B) Endpoint dedicado `POST /v1/videos/{videoId}/view`** | Controle total no front (dispara após X segundos assistidos) | Depende do front ser honesto; fácil de fazer bots chamarem |
+| **C) Front envia após % assistida (ex: 30%)** | Mais próximo de "visualização real" | Mesma vulnerabilidade que B; requer lógica no front |
+| **D) Combinação: endpoint + debounce por usuário no backend** | Confiável — um usuário só conta uma vez por janela de tempo | Requer Redis para debounce (TTL por `userId+videoId`); mais complexo |
+
+**Recomendação:** Opção D — endpoint `POST /v1/videos/{videoId}/view` com debounce no Redis (`view:{userId}:{videoId}` com TTL de 24h para autenticados; por IP para anônimos). É o padrão usado por plataformas sérias.
+
+**Decisão:** ⚠️ Pendente — escolher opção antes de implementar.
+
+---
+
 ## Resumo dos Endpoints
 
 Após todas as tasks, esses são os endpoints registrados no `Program.cs`:
@@ -2401,6 +2480,10 @@ DeleteVideo.MapEndpoint(app);
 ListFeedVideos.MapEndpoint(app);
 ListTrendingVideos.MapEndpoint(app);
 VideoProcessedWebhook.MapEndpoint(app);
+UploadVideoThumbnail.MapEndpoint(app);
+
+// Users
+UploadAvatar.MapEndpoint(app);
 
 // Reactions
 ReactToVideo.MapEndpoint(app);
@@ -2429,6 +2512,9 @@ ReorderPlaylistItems.MapEndpoint(app);
 2. Task 8–9 (Auth) — necessário para testar os outros endpoints
 3. Task 10–11 (Channels) — necessário para criar vídeos
 4. Tasks 12–15 (Videos) — core da plataforma
-5. Tasks 16–17 (Reactions + Comments) — features sociais
-6. Task 19 (Playlists) — depende de vídeos estar pronto
-6. Task 18 (Integration Tests) — validação end-to-end
+5. Task 20 (UploadVideoThumbnail) — depende de vídeo pronto
+6. Task 21 (Foto de perfil) — independente, pode ser feito a qualquer momento
+7. Task 22 (ViewCount) — ⚠️ decisão pendente antes de implementar
+8. Tasks 16–17 (Reactions + Comments) — features sociais
+9. Task 19 (Playlists) — depende de vídeos estar pronto
+10. Task 18 (Integration Tests) — validação end-to-end

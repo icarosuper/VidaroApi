@@ -50,12 +50,22 @@ public static class UnfollowChannel
             if (notFollowing)
                 return Errors.Channel.NotFollowing();
 
-            db.ChannelFollowers.Remove(follower!);
-            channel.DecrementFollowerCount();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
 
+            db.ChannelFollowers.Remove(follower!);
             await db.SaveChangesAsync(ct);
+            await DecrementFollowerCount(cmd.ChannelId, ct);
+
+            await tx.CommitAsync(ct);
 
             return UnitResult.Success<Error>();
+        }
+
+        private Task<int> DecrementFollowerCount(Guid channelId, CancellationToken ct)
+        {
+            return db.Channels
+                .Where(c => c.Id == channelId)
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.FollowerCount, c => c.FollowerCount - 1), ct);
         }
     }
 }

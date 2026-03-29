@@ -14,7 +14,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   private readonly List<Video> _videos = [];
   public IReadOnlyList<Video> Videos => _videos.AsReadOnly();
   ```
-- **Domain methods for state mutations** — e.g. `video.MarkAsReady(...)`, `channel.IncrementFollowerCount()`, `user.ChangeEmail(...)`. Keeps logic encapsulated instead of spreading it across slices.
+- **Domain methods for state mutations** — e.g. `video.MarkAsReady(...)`, `user.ChangeEmail(...)`. Keeps logic encapsulated instead of spreading it across slices.
+- **No counter methods on entities** — counters (`LikeCount`, `DislikeCount`, `ViewCount`, `FollowerCount`) are updated atomically via `ExecuteUpdateAsync` in the feature handler. Entity methods like `IncrementLikeCount()` are not safe under concurrency and must not be added.
+- **`ExecuteUpdateAsync` always goes in a private method** — never inline in `Handle`. Name the method after its intent (e.g. `IncrementFollowerCount`, `DecrementFollowerCount`). Return `Task<int>` (not `Task`) to match the return type of `ExecuteUpdateAsync` exactly and avoid implicit upcasting overhead.
+- **Use a transaction whenever `SaveChangesAsync` and `ExecuteUpdateAsync` must be atomic** — wrap both in `await using var tx = await db.Database.BeginTransactionAsync(ct)` and call `await tx.CommitAsync(ct)` at the end. The `await using` ensures automatic rollback on failure.
 - **No value objects** unless a type has real validation/equality rules (none identified yet)
 - **Base classes:** `BaseEntity` (Id + CreatedAt, both `init`) and `BaseAuditableEntity : BaseEntity` (+ `UpdatedAt` with `private set`, mutated via `SetUpdatedAt(now)`)
 - **Errors live in `Domain/Errors/`**. Three kinds:
@@ -53,7 +56,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   if (token.IsRevoked || token.ExpiresAt < clock.UtcNow) return Errors.RefreshToken.Invalid();
   ```
 - **Extract complex or long logic into private methods** — if a block of code needs a comment to explain what it does, it should be a method with a name that explains it instead.
+- **`Handle` should read like a sequence of named steps** — any non-trivial inline block (query building, object construction, projection/mapping) must be extracted to a private method. The goal is that `Handle` reads top-to-bottom as a series of descriptive calls with no implementation detail.
+- **`SaveChangesAsync` always stays in `Handle`** — private methods must never call `db.SaveChangesAsync`. They should only stage changes (e.g. `db.Add`, `db.Remove`). This keeps the persistence boundary explicit and visible in the handler.
+- **Build `Response` inline in `Handle`** — only extract the mapping to a private method if the `Response` is very large (many fields across multiple related objects). For typical responses, keep the `new Response { ... }` directly in `Handle` so the return value is explicit.
 - **Method and variable names must express intent** — the name should answer "what" not "how". Avoid abbreviations, single-letter names (outside loops), and generic names like `result`, `data`, `temp`.
+- **No `Async` suffix on method names** — the return type (`Task`/`ValueTask`) already communicates that. Never name a method `DoSomethingAsync`.
+- **Ternaries always span three lines** — condition on the first line, `?` branch on the second, `:` branch on the third. Never write a ternary on a single line.
+  ```csharp
+  // ✅
+  Guid? requestingUserId = user.Identity?.IsAuthenticated == true
+      ? user.GetUserId()
+      : null;
+
+  // ❌
+  Guid? requestingUserId = user.Identity?.IsAuthenticated == true ? user.GetUserId() : null;
+  ```
+- **Prefer `{}` block body over `=>` expression body** for methods with more than one line. Reserve `=>` for truly one-line methods (e.g. computed properties on entities, simple delegating calls).
+  ```csharp
+  // ✅ one-liner → =>
+  public int Total => Items.Count;
+
+  // ✅ multi-line → {}
+  private Task<Video?> FetchVideo(Guid id, CancellationToken ct)
+  {
+      return db.Videos.Include(v => v.Channel).FirstOrDefaultAsync(v => v.Id == id, ct);
+  }
+
+  // ❌ multi-line with =>
+  private Task<Video?> FetchVideo(Guid id, CancellationToken ct) =>
+      db.Videos.Include(v => v.Channel).FirstOrDefaultAsync(v => v.Id == id, ct);
+  ```
 
 ## Testing conventions
 
