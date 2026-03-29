@@ -18,13 +18,6 @@ namespace VidroApi.Infrastructure.Persistence.Migrations
                 nullable: false,
                 defaultValue: 0);
 
-            migrationBuilder.AddColumn<DateTimeOffset>(
-                name: "upload_expires_at",
-                table: "videos",
-                type: "timestamp with time zone",
-                nullable: false,
-                defaultValue: new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)));
-
             migrationBuilder.AddColumn<int>(
                 name: "dislike_count",
                 table: "comments",
@@ -44,6 +37,13 @@ namespace VidroApi.Infrastructure.Persistence.Migrations
                 table: "comments",
                 type: "uuid",
                 nullable: true);
+
+            migrationBuilder.AddColumn<int>(
+                name: "reply_count",
+                table: "comments",
+                type: "integer",
+                nullable: false,
+                defaultValue: 0);
 
             migrationBuilder.CreateTable(
                 name: "comment_reactions",
@@ -116,10 +116,6 @@ namespace VidroApi.Infrastructure.Persistence.Migrations
                 table: "videos");
 
             migrationBuilder.DropColumn(
-                name: "upload_expires_at",
-                table: "videos");
-
-            migrationBuilder.DropColumn(
                 name: "dislike_count",
                 table: "comments");
 
@@ -129,6 +125,10 @@ namespace VidroApi.Infrastructure.Persistence.Migrations
 
             migrationBuilder.DropColumn(
                 name: "parent_comment_id",
+                table: "comments");
+
+            migrationBuilder.DropColumn(
+                name: "reply_count",
                 table: "comments");
         }
     }

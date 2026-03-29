@@ -13,7 +13,7 @@ using VidroApi.Infrastructure.Persistence;
 namespace VidroApi.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260329043312_AddCommentsFeatureMigration")]
+    [Migration("20260329051751_AddCommentsFeatureMigration")]
     partial class AddCommentsFeatureMigration
     {
         /// <inheritdoc />
@@ -128,6 +128,10 @@ namespace VidroApi.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("ParentCommentId")
                         .HasColumnType("uuid")
                         .HasColumnName("parent_comment_id");
+
+                    b.Property<int>("ReplyCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("reply_count");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")

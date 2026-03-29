@@ -126,6 +126,10 @@ namespace VidroApi.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("parent_comment_id");
 
+                    b.Property<int>("ReplyCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("reply_count");
+
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");

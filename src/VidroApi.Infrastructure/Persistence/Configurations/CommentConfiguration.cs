@@ -26,6 +26,7 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
 
         builder.Property(c => c.LikeCount).HasColumnName("like_count");
         builder.Property(c => c.DislikeCount).HasColumnName("dislike_count");
+        builder.Property(c => c.ReplyCount).HasColumnName("reply_count");
         builder.Property(c => c.IsDeleted).HasColumnName("is_deleted");
 
         builder.HasOne(c => c.Video)
