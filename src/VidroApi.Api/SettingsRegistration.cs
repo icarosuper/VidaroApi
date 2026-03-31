@@ -75,5 +75,10 @@ public static class SettingsRegistration
             .BindConfiguration("JobQueueSettings")
             .ValidateDataAnnotations()
             .ValidateOnStart();
+
+        services.AddOptions<SearchSettings>()
+            .BindConfiguration("SearchSettings")
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
     }
 }
