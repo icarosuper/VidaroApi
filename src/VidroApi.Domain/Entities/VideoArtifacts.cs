@@ -41,6 +41,15 @@ public class VideoArtifacts : BaseEntity
     public string? HlsPath { get; init; }
     public string AudioPath { get; init; } = null!;
     public List<string> ThumbnailPaths { get; init; } = null!;
+    public string? CustomThumbnailPath { get; private set; }
+
+    public void SetCustomThumbnailPath(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (path.Length > PathMaxLength)
+            throw new ArgumentException($"CustomThumbnailPath cannot exceed {PathMaxLength} characters.", nameof(path));
+        CustomThumbnailPath = path;
+    }
 
     // Navigation property
     public Video Video { get; init; } = null!;
