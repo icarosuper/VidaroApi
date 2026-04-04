@@ -47,6 +47,14 @@ public class User : BaseEntity
         PasswordHash = passwordHash;
     }
 
+    public string? AvatarPath { get; private set; }
+
+    public void SetAvatar(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        AvatarPath = path;
+    }
+
     // ReSharper disable once CollectionNeverUpdated.Local
     private readonly List<RefreshToken> _refreshTokens = [];
     public IReadOnlyList<RefreshToken> RefreshTokens => _refreshTokens.AsReadOnly();
