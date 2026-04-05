@@ -39,5 +39,10 @@ public class VideoArtifactsConfiguration : IEntityTypeConfiguration<VideoArtifac
         builder.Property(a => a.ThumbnailPaths)
             .HasColumnName("thumbnail_paths")
             .HasColumnType("text[]");
+
+        builder.Property(a => a.CustomThumbnailPath)
+            .HasColumnName("custom_thumbnail_path")
+            .HasMaxLength(VideoArtifacts.PathMaxLength)
+            .IsRequired(false);
     }
 }

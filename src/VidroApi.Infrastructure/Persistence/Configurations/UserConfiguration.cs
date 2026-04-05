@@ -28,6 +28,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnName("password_hash")
             .IsRequired();
 
+        builder.Property(u => u.AvatarPath)
+            .HasColumnName("avatar_path")
+            .IsRequired(false);
+
         builder.HasIndex(u => u.Username).IsUnique();
         builder.HasIndex(u => u.Email).IsUnique();
     }
